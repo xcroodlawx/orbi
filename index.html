@@ -5,159 +5,47 @@
   <meta http-equiv="Permissions-Policy" content="geolocation=(self)" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Orbi - Calculadora de Distância com Pedágio</title>
-
-  <!-- CSS da UI do HERE Maps -->
   <link rel="stylesheet" type="text/css" href="https://js.api.here.com/v3/3.1/mapsjs-ui.css" />
-
-  <!-- Scripts da API HERE -->
   <script src="https://js.api.here.com/v3/3.1/mapsjs-core.js"></script>
   <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js"></script>
   <script src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"></script>
   <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
-
   <style>
-    /* Tamanho de impressão: 6in x 12in */
-    @page {
-      size: 6in 12in;
-      margin: 0;
-    }
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background-color: #f5f5f5;
-      color: #333;
-    }
-    header, footer {
-      background-color: #2979ff;
-      color: #fff;
-      text-align: center;
-      padding: 0.8rem 1rem;
-    }
-    main {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 1rem;
-    }
-    .calc-section {
-      background: #fff;
-      padding: 1rem;
-      margin-bottom: 1rem;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .calc-section h2 {
-      margin-bottom: 0.5rem;
-      text-align: center;
-      color: #2979ff;
-    }
-    .calc-section input,
-    .calc-section button {
-      width: 100%;
-      padding: 0.6rem;
-      margin: 0.4rem 0;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      font-size: 1rem;
-    }
-    .calc-section button {
-      background: #ff4081;
-      color: #fff;
-      border: none;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    .calc-section button:hover {
-      background: #f50057;
-    }
-    #suggestions {
-      list-style: none;
-      padding: 0.5rem;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      background: #fff;
-      max-height: 150px;
-      overflow-y: auto;
-    }
-    #suggestions li {
-      padding: 0.5rem;
-      cursor: pointer;
-    }
-    #suggestions li:hover {
-      background-color: #e0e0e0;
-    }
-    #receipt {
-      padding: 1rem;
-      border-bottom: 1px solid #ccc;
-      margin-bottom: 1rem;
-      background: #fff;
-      border-radius: 8px;
-    }
-    #receipt h2 {
-      margin-bottom: 0.5rem;
-      color: #2979ff;
-    }
-    #map {
-      width: 100%;
-      height: 400px;
-      border: none;
-      border-bottom: 1px solid #ccc;
-      margin-bottom: 1rem;
-      border-radius: 8px;
-      pointer-events: none;
-    }
-    .imprimir-btn {
-      background: #00e676;
-      color: #fff;
-      padding: 0.6rem;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      width: 100%;
-      margin-top: 1rem;
-      font-size: 1rem;
-    }
-    .imprimir-btn:hover {
-      background: #00c853;
-    }
-    .no-print {
-      display: block;
-    }
-    @media print {
-      .no-print {
-        display: none;
-      }
-      body {
-        margin: 0;
-      }
-    }
-    @media (max-width: 600px) {
-      main {
-        padding: 0.5rem;
-      }
-      .calc-section, #receipt, #map {
-        padding: 0.8rem;
-      }
-      .calc-section input, .calc-section button, .imprimir-btn {
-        font-size: 0.9rem;
-      }
-    }
+    @page { size: 6in 12in; margin: 0; }
+    body { margin: 0; font-family: Arial, sans-serif; background-color: #f5f5f5; color: #333; }
+    header, footer { background-color: #2979ff; color: #fff; text-align: center; padding: 0.8rem 1rem; }
+    header h1, footer p { margin: 0; }
+    main { max-width: 800px; margin: 0 auto; padding: 1rem; }
+    .calc-section { background: #fff; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .calc-section h2 { margin-bottom: 0.5rem; text-align: center; color: #2979ff; }
+    .calc-section input, .calc-section button { width: 100%; padding: 0.6rem; margin: 0.4rem 0; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem; }
+    .calc-section button { background: #ff4081; color: #fff; border: none; cursor: pointer; transition: background 0.2s; }
+    .calc-section button:hover { background: #f50057; }
+    #suggestions { list-style: none; padding: 0.5rem; border: 1px solid #ccc; border-radius: 8px; background: #fff; max-height: 150px; overflow-y: auto; }
+    #suggestions li { padding: 0.5rem; cursor: pointer; }
+    #suggestions li:hover { background-color: #e0e0e0; }
+    #receipt { padding: 1rem; border-bottom: 1px solid #ccc; margin-bottom: 1rem; background: #fff; border-radius: 8px; }
+    #receipt h2 { margin-bottom: 0.5rem; color: #2979ff; }
+    #map { width: 100%; height: 400px; border: none; border-bottom: 1px solid #ccc; margin-bottom: 1rem; border-radius: 8px; pointer-events: none; overflow: visible; }
+    .imprimir-btn { background: #00e676; color: #fff; padding: 0.6rem; border: none; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 1rem; font-size: 1rem; }
+    .imprimir-btn:hover { background: #00c853; }
+    .no-print { display: block; }
+    @media print { .no-print { display: none; } body { margin: 0; } }
+    @media (max-width:600px) { main { padding: 0.5rem; } .calc-section, #receipt, #map { padding: 0.8rem; } .calc-section input, .calc-section button, .imprimir-btn { font-size: 0.9rem; } }
   </style>
 </head>
 <body>
-  <header class="no-print">
-    <h1>Orbi</h1>
-  </header>
-  <main>
+  <header class="no-print"><h1>Orbi</h1></header>
+  <main id="printContainer">
     <section class="calc-section no-print">
       <h2>Calculadora de Distância com Pedágio</h2>
-      <input type="text" id="destino" placeholder="Digite o nome do local" autocomplete="off" />
+      <input type="text" id="destino" placeholder="Digite o nome do local" autocomplete="off">
       <ul id="suggestions"></ul>
       <button onclick="calcularDistancia()">Calcular</button>
       <p id="resultado"></p>
       <p id="tollInfo"></p>
       <button class="imprimir-btn no-print" onclick="prepararImpressao()">Imprimir Recibo</button>
     </section>
-
     <div id="receipt">
       <h2>Recibo de Viagem</h2>
       <p id="pOrigem">Origem: </p>
@@ -167,277 +55,214 @@
       <p id="pValorKm">Valor do Km: </p>
       <p id="pTotal">Total: </p>
     </div>
-
     <div id="map"></div>
   </main>
-  <footer class="no-print">
-    <p>&copy; 2025 Orbi. Todos os direitos reservados.</p>
-  </footer>
-
+  <footer class="no-print"><p>&copy; 2025 Orbi. Todos os direitos reservados.</p></footer>
   <script>
-    const apiKey = "o2UlrzSQyEyGz0GG8MLHBFVyQrERHJiLzV0JqRtyexg"; // Substitua pela sua chave válida HERE
+    const apiKey = "SUA_API_KEY_AQUI";
     let map = null, platform;
-    let currentLocation = null;
-    let destinationCoords = null;
+    let currentLocation = null, destinationCoords = null;
     const fallbackLocation = { lat: -23.550520, lng: -46.633308 };
-
-    // Variáveis do recibo
     window.calculatedDistance = "";
     window.calculatedToll = "";
     window.originAddress = "";
     window.destinationAddress = "";
     window.encodedRoutePolyline = "";
+    let mapGroup = null, markerOrigin = null, markerDestination = null;
 
-    document.getElementById("destino").addEventListener("input", function() {
-      const query = this.value.trim();
+    document.getElementById("destino").addEventListener("input", function(){
+      const q = this.value.trim();
       destinationCoords = null;
-      if (query.length < 1) {
-        document.getElementById("suggestions").innerHTML = "";
-        return;
-      }
-      fetchSuggestions(query);
+      if(q.length < 1){ document.getElementById("suggestions").innerHTML=""; return; }
+      fetchSuggestions(q);
     });
 
-    function fetchSuggestions(query) {
-      if (!currentLocation) {
-        getUserLocation().then(loc => {
-          currentLocation = loc;
-          fetchSuggestions(query);
-        });
-        return;
-      }
-      const url = `https://autosuggest.search.hereapi.com/v1/autosuggest?at=${currentLocation.lat},${currentLocation.lng}&q=${encodeURIComponent(query)}&apiKey=${apiKey}`;
-      fetch(url)
-        .then(r => r.json())
-        .then(data => {
-          const suggestionsList = document.getElementById("suggestions");
-          suggestionsList.innerHTML = "";
-          if (data.items && data.items.length > 0) {
-            data.items.forEach(item => {
-              if (item.position) {
-                const li = document.createElement("li");
-                li.textContent = item.title + (item.address && item.address.label ? " - " + item.address.label : "");
-                li.addEventListener("click", () => {
-                  document.getElementById("destino").value = item.title;
-                  destinationCoords = { lat: item.position.lat, lng: item.position.lng };
-                  if (item.address && item.address.label) {
-                    window.destinationAddress = item.address.label;
-                  }
-                  suggestionsList.innerHTML = "";
-                });
-                suggestionsList.appendChild(li);
-              }
-            });
-          }
-        })
-        .catch(e => console.error("Erro ao buscar sugestões:", e));
-    }
-
-    function getUserLocation() {
-      return new Promise((resolve) => {
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-            error => {
-              console.error("Erro ao obter localização:", error);
-              resolve(fallbackLocation);
+    function fetchSuggestions(q){
+      if(!currentLocation){ getUserLocation().then(loc=>{ currentLocation = loc; fetchSuggestions(q); }); return; }
+      const url = `https://autosuggest.search.hereapi.com/v1/autosuggest?at=${currentLocation.lat},${currentLocation.lng}&q=${encodeURIComponent(q)}&apiKey=${apiKey}`;
+      fetch(url).then(r=>r.json()).then(data=>{
+        const sl = document.getElementById("suggestions");
+        sl.innerHTML = "";
+        if(data.items && data.items.length>0){
+          data.items.forEach(item=>{
+            if(item.position){
+              let li = document.createElement("li");
+              li.textContent = item.title + (item.address && item.address.label ? " - " + item.address.label : "");
+              li.addEventListener("click", ()=>{
+                document.getElementById("destino").value = item.title;
+                destinationCoords = { lat: item.position.lat, lng: item.position.lng };
+                if(item.address && item.address.label){ window.destinationAddress = item.address.label; }
+                sl.innerHTML = "";
+              });
+              sl.appendChild(li);
             }
-          );
-        } else {
-          resolve(fallbackLocation);
+          });
         }
+      }).catch(e=>console.error("Erro ao buscar sugestões:", e));
+    }
+
+    function getUserLocation(){
+      return new Promise((resolve)=>{
+        if(navigator.geolocation){
+          navigator.geolocation.getCurrentPosition(pos=>resolve({lat: pos.coords.latitude, lng: pos.coords.longitude}),
+          error=>{ console.error("Erro:", error); resolve(fallbackLocation); });
+        } else { resolve(fallbackLocation); }
       });
     }
 
-    function reverseGeocode(coords) {
+    function reverseGeocode(coords){
       const url = `https://revgeocode.search.hereapi.com/v1/revgeocode?at=${coords.lat},${coords.lng}&lang=pt-BR&apiKey=${apiKey}`;
-      return fetch(url)
-        .then(r => r.json())
-        .then(d => {
-          if (d.items && d.items.length > 0) {
-            return d.items[0].address.label;
-          } else {
-            return "Endereço não encontrado";
-          }
-        })
-        .catch(err => {
-          console.error(err);
-          return "Endereço não disponível";
-        });
+      return fetch(url).then(r=>r.json()).then(data=> data.items && data.items.length>0 ? data.items[0].address.label : "Endereço não encontrado")
+      .catch(err=>{ console.error(err); return "Endereço não disponível"; });
     }
 
-    function initMap(lat, lng) {
-      const mapContainer = document.getElementById("map");
-      if (!mapContainer) return;
-      if (map) {
-        map.dispose();
-        map = null;
-      }
-      while (mapContainer.firstChild) {
-        mapContainer.removeChild(mapContainer.firstChild);
-      }
-      platform = new H.service.Platform({ apikey: apiKey });
-      const defaultLayers = platform.createDefaultLayers();
-      // Remove minZoom/maxZoom para permitir zoom out total
-      map = new H.Map(mapContainer, defaultLayers.vector.normal.map, {
-        center: { lat, lng },
-        zoom: 14
-      });
-      const ui = H.ui.UI.createDefault(map, defaultLayers);
+    function initMap(lat, lng){
+      const mc = document.getElementById("map");
+      if(!mc)return;
+      if(map){ map.dispose(); map = null; }
+      while(mc.firstChild){ mc.removeChild(mc.firstChild); }
+      platform = new H.service.Platform({apikey: apiKey});
+      const dl = platform.createDefaultLayers();
+      map = new H.Map(mc, dl.vector.normal.map, { center: {lat, lng}, zoom: 14 });
+      mapGroup = new H.map.Group();
+      map.addObject(mapGroup);
+      const ui = H.ui.UI.createDefault(map, dl);
       ui.removeControl("zoom");
     }
 
-    function addMarker(lat, lng, iconUrl) {
-      const icon = new H.map.Icon(iconUrl);
-      const marker = new H.map.Marker({ lat, lng }, { icon });
-      map.addObject(marker);
+    function addOriginMarker(lat, lng){
+      markerOrigin = new H.map.Marker({lat, lng}, {icon: new H.map.Icon('https://maps.gstatic.com/mapfiles/ms2/micons/red-dot.png')});
+      mapGroup.addObject(markerOrigin);
     }
 
-    function calcularDistancia() {
-      getUserLocation().then(location => {
+    function addDestinationMarker(lat, lng){
+      markerDestination = new H.map.Marker({lat, lng}, {icon: new H.map.Icon('https://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png')});
+      mapGroup.addObject(markerDestination);
+    }
+
+    function calcularDistancia(){
+      getUserLocation().then(location=>{
         currentLocation = location;
         initMap(location.lat, location.lng);
-        addMarker(location.lat, location.lng, 'https://maps.gstatic.com/mapfiles/ms2/micons/red-dot.png');
-        reverseGeocode(location).then(addr => {
-          window.originAddress = addr;
-          updateReceipt();
-        });
-        if (destinationCoords) {
-          processRoute(destinationCoords.lat, destinationCoords.lng);
-        } else {
+        addOriginMarker(location.lat, location.lng);
+        reverseGeocode(location).then(addr=>{ window.originAddress = addr; updateReceipt(); });
+        if(destinationCoords){ processRoute(destinationCoords.lat, destinationCoords.lng); }
+        else{
           const destino = document.getElementById("destino").value;
-          if (!destino.trim()) {
+          if(!destino.trim()){
             document.getElementById("resultado").innerText = "Por favor, insira um destino.";
             document.getElementById("tollInfo").innerText = "";
             return;
           }
           fetch(`https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(destino)}&apiKey=${apiKey}`)
-            .then(r => r.json())
-            .then(d => {
-              if (d.items && d.items.length > 0) {
-                const destinoLat = d.items[0].position.lat;
-                const destinoLng = d.items[0].position.lng;
-                if (d.items[0].address && d.items[0].address.label) {
-                  window.destinationAddress = d.items[0].address.label;
-                }
-                processRoute(destinoLat, destinoLng);
-              } else {
-                document.getElementById("resultado").innerText = "Destino não encontrado.";
-                document.getElementById("tollInfo").innerText = "Sem pedágios";
-              }
-            })
-            .catch(e => {
-              console.error("Erro ao buscar coordenadas:", e);
-              document.getElementById("resultado").innerText = "Erro ao buscar coordenadas.";
-              document.getElementById("tollInfo").innerText = "Sem pedágios";
-            });
+          .then(r=>r.json()).then(data=>{
+            if(data.items && data.items.length>0){
+              const destLat = data.items[0].position.lat, destLng = data.items[0].position.lng;
+              if(data.items[0].address && data.items[0].address.label){ window.destinationAddress = data.items[0].address.label; }
+              processRoute(destLat, destLng);
+            } else { document.getElementById("resultado").innerText="Destino não encontrado."; document.getElementById("tollInfo").innerText="Sem pedágios"; }
+          }).catch(e=>{
+            console.error("Erro:", e);
+            document.getElementById("resultado").innerText="Erro ao buscar coordenadas.";
+            document.getElementById("tollInfo").innerText="Sem pedágios";
+          });
         }
       });
     }
 
-    function processRoute(destinoLat, destinoLng) {
-      addMarker(destinoLat, destinoLng, 'https://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png');
-      window.destinationCoords = { lat: destinoLat, lng: destinoLng };
-
-      const routingService = platform.getRoutingService(null, 8);
-      const routeRequestParams = {
+    function processRoute(destLat, destLng){
+      addDestinationMarker(destLat, destLng);
+      window.destinationCoords = {lat: destLat, lng: destLng};
+      const routingService = platform.getRoutingService(null,8);
+      const params = {
         transportMode: 'car',
         origin: `${currentLocation.lat},${currentLocation.lng}`,
-        destination: `${destinoLat},${destinoLng}`,
+        destination: `${destLat},${destLng}`,
         return: 'summary,polyline,travelSummary,tolls'
       };
-
-      routingService.calculateRoute(routeRequestParams, result => {
-        if (result.routes && result.routes.length > 0) {
+      routingService.calculateRoute(params, result=>{
+        if(result.routes && result.routes.length>0){
           const route = result.routes[0];
-          let totalDistance = 0;
-          // Cria um LineString combinando origem, rota e destino
-          const combinedLineString = new H.geo.LineString();
-          // Adiciona origem
-          combinedLineString.pushPoint({ lat: currentLocation.lat, lng: currentLocation.lng });
-
-          route.sections.forEach(section => {
-            totalDistance += (section.summary.length || section.summary.distance || 0);
-            const lines = H.geo.LineString.fromFlexiblePolyline(section.polyline);
-            const routePolyline = new H.map.Polyline(lines, { style: { strokeColor: 'blue', lineWidth: 4 } });
-            map.addObject(routePolyline);
-            // Adiciona todos os pontos da polyline
-            const coords = lines.getLatLngAltArray();
-            for (let i = 0; i < coords.length; i += 3) {
-              combinedLineString.pushLatLngAlt(coords[i], coords[i + 1], 0);
-            }
+          let totalDist = 0;
+          const combinedLS = new H.geo.LineString();
+          combinedLS.pushPoint({lat: currentLocation.lat, lng: currentLocation.lng});
+          route.sections.forEach(section=>{
+            totalDist += (section.summary.length || section.summary.distance || 0);
+            const ls = H.geo.LineString.fromFlexiblePolyline(section.polyline);
+            const poly = new H.map.Polyline(ls, { style: { strokeColor: 'blue', lineWidth: 4 } });
+            mapGroup.addObject(poly);
+            const coords = ls.getLatLngAltArray();
+            for(let i=0; i<coords.length; i+=3){ combinedLS.pushLatLngAlt(coords[i], coords[i+1], 0); }
           });
-          // Adiciona destino
-          combinedLineString.pushPoint({ lat: destinoLat, lng: destinoLng });
-
-          // Distância em km
-          totalDistance = totalDistance / 1000;
-          document.getElementById("resultado").innerText = `Distância: ${totalDistance.toFixed(2)} km`;
-          window.calculatedDistance = totalDistance.toFixed(2);
-
-          // Auto zoom: bounding box do combinedLineString + padding grande
-          const boundingBox = combinedLineString.getBoundingBox();
-          map.getViewModel().setLookAtData({
-            bounds: boundingBox,
-            // Aumente o padding se ainda cortar a rota
-            padding: { top: 800, bottom: 800, left: 800, right: 800 },
-            // Permite zoom-out máximo
-            minZoom: 1,
-            animation: false
-          });
-
-          // Calcula pedágio
-          try {
-            const tollCost = route.sections.reduce((total, section) => {
-              if (section.tolls && section.tolls.length > 0) {
-                const sectionToll = section.tolls.reduce((subTotal, toll) => {
-                  if (toll.fares && toll.fares.length > 0) {
-                    const tollFareSum = toll.fares.reduce((fareSum, fare) => {
-                      return fareSum + (fare.price && typeof fare.price.value === 'number' ? fare.price.value : 0);
-                    }, 0);
-                    return subTotal + tollFareSum;
+          combinedLS.pushPoint({lat: destLat, lng: destLng});
+          totalDist = totalDist / 1000;
+          document.getElementById("resultado").innerText = `Distância: ${totalDist.toFixed(2)} km`;
+          window.calculatedDistance = totalDist.toFixed(2);
+          map.getViewPort().resize();
+          setTimeout(()=>{
+            const bBox = combinedLS.getBoundingBox();
+            autoAdjustZoom(bBox);
+          },1500);
+          try{
+            const tollCost = route.sections.reduce((total, section)=>{
+              if(section.tolls && section.tolls.length>0){
+                const sectionToll = section.tolls.reduce((subTotal, toll)=>{
+                  if(toll.fares && toll.fares.length>0){
+                    const sum = toll.fares.reduce((fareSum, fare)=> fareSum + (fare.price && typeof fare.price.value==='number'?fare.price.value:0), 0);
+                    return subTotal + sum;
                   }
                   return subTotal;
-                }, 0);
+                },0);
                 return total + sectionToll;
               }
               return total;
-            }, 0);
-            document.getElementById("tollInfo").innerText = tollCost > 0
-              ? `Pedágio estimado: R$ ${tollCost.toFixed(2)}`
-              : "Sem pedágios";
+            },0);
+            document.getElementById("tollInfo").innerText = tollCost>0 ? `Pedágio estimado: R$ ${tollCost.toFixed(2)}` : "Sem pedágios";
             window.calculatedToll = tollCost.toFixed(2);
-          } catch (error) {
+          } catch(error){
             console.error("Erro no cálculo do pedágio:", error);
-            document.getElementById("tollInfo").innerText = "Sem pedágios";
+            document.getElementById("tollInfo").innerText="Sem pedágios";
           }
           updateReceipt();
         } else {
-          document.getElementById("resultado").innerText = "Nenhuma rota encontrada.";
-          document.getElementById("tollInfo").innerText = "Sem pedágios";
+          document.getElementById("resultado").innerText="Nenhuma rota encontrada.";
+          document.getElementById("tollInfo").innerText="Sem pedágios";
         }
-      }, error => {
+      }, error=>{
         console.error("Erro ao calcular a rota:", error);
-        document.getElementById("resultado").innerText = "Erro ao calcular a rota.";
-        document.getElementById("tollInfo").innerText = "Sem pedágios";
+        document.getElementById("resultado").innerText="Erro ao calcular a rota.";
+        document.getElementById("tollInfo").innerText="Sem pedágios";
       });
     }
 
-    function updateReceipt() {
+    function autoAdjustZoom(bBox){
+      for(let zoom=5; zoom<=15; zoom++){
+        map.setZoom(zoom);
+        const originScreen = map.geoToScreen(markerOrigin.getGeometry());
+        const destScreen = map.geoToScreen(markerDestination.getGeometry());
+        const w = document.getElementById("map").offsetWidth;
+        const h = document.getElementById("map").offsetHeight;
+        if(originScreen.x>=0 && originScreen.x<=w && originScreen.y>=0 && originScreen.y<=h &&
+           destScreen.x>=0 && destScreen.x<=w && destScreen.y>=0 && destScreen.y<=h){
+          map.getViewModel().setLookAtData({ bounds: bBox, padding: { top:300, bottom:300, left:300, right:300 }, animation:false });
+          return;
+        }
+      }
+      map.getViewModel().setLookAtData({ bounds: bBox, padding: { top:300, bottom:300, left:300, right:300 }, animation:false });
+    }
+
+    function updateReceipt(){
       document.getElementById("pOrigem").innerText = `Origem: ${window.originAddress || "Não disponível"}`;
       document.getElementById("pDestino").innerText = `Destino: ${window.destinationAddress || "Não disponível"}`;
       document.getElementById("pKmRodado").innerText = `Km Rodado: ${window.calculatedDistance} km`;
       document.getElementById("pPedagio").innerText = `Valor do Pedágio: R$ ${window.calculatedToll}`;
-      const kmValue = parseFloat(window.calculatedDistance) * 0.65;
-      document.getElementById("pValorKm").innerText = `Valor do Km: R$ ${kmValue.toFixed(2)}`;
-      const total = kmValue + parseFloat(window.calculatedToll || 0);
-      document.getElementById("pTotal").innerText = `Total: R$ ${total.toFixed(2)}`;
+      const kmVal = parseFloat(window.calculatedDistance) * 0.65;
+      document.getElementById("pValorKm").innerText = `Valor do Km: R$ ${kmVal.toFixed(2)}`;
+      const tot = kmVal + parseFloat(window.calculatedToll || 0);
+      document.getElementById("pTotal").innerText = `Total: R$ ${tot.toFixed(2)}`;
     }
 
-    function prepararImpressao() {
-      updateReceipt();
-      window.print();
-    }
+    function prepararImpressao(){ updateReceipt(); window.print(); }
   </script>
 </body>
 </html>
