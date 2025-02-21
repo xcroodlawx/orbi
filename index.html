@@ -32,13 +32,17 @@
     .imprimir-btn { background: #00e676; color: #fff; padding: 0.6rem; border: none; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 1rem; font-size: 1rem; }
     .imprimir-btn:hover { background: #00c853; }
     .no-print { display: block; }
-    @media print { 
-      .no-print { display: none; } 
-      .pdf-map { display: block; } 
-      #map { display: none; } 
-      body { margin: 0; } 
+    @media print {
+      .no-print { display: none; }
+      .pdf-map { display: block; }
+      #map { display: none; }
+      body { margin: 0; }
     }
-    @media (max-width:600px) { main { padding: 0.5rem; } .calc-section, #receipt, #map, .pdf-map { padding: 0.8rem; } .calc-section input, .calc-section button, .imprimir-btn { font-size: 0.9rem; } }
+    @media (max-width:600px) {
+      main { padding: 0.5rem; }
+      .calc-section, #receipt, #map, .pdf-map { padding: 0.8rem; }
+      .calc-section input, .calc-section button, .imprimir-btn { font-size: 0.9rem; }
+    }
   </style>
 </head>
 <body>
@@ -152,8 +156,8 @@
         else{
           const destino = document.getElementById("destino").value;
           if(!destino.trim()){
-            document.getElementById("resultado").innerText="Por favor, insira um destino.";
-            document.getElementById("tollInfo").innerText="";
+            document.getElementById("resultado").innerText = "Por favor, insira um destino.";
+            document.getElementById("tollInfo").innerText = "";
             return;
           }
           fetch(`https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(destino)}&apiKey=${apiKey}`)
@@ -162,11 +166,14 @@
               const destLat = d.items[0].position.lat, destLng = d.items[0].position.lng;
               if(d.items[0].address && d.items[0].address.label){ window.destinationAddress = d.items[0].address.label; }
               processRoute(destLat, destLng);
-            } else { document.getElementById("resultado").innerText="Destino não encontrado."; document.getElementById("tollInfo").innerText="Sem pedágios"; }
+            } else {
+              document.getElementById("resultado").innerText = "Destino não encontrado.";
+              document.getElementById("tollInfo").innerText = "Sem pedágios";
+            }
           }).catch(e=>{
             console.error("Erro:", e);
-            document.getElementById("resultado").innerText="Erro ao buscar coordenadas.";
-            document.getElementById("tollInfo").innerText="Sem pedágios";
+            document.getElementById("resultado").innerText = "Erro ao buscar coordenadas.";
+            document.getElementById("tollInfo").innerText = "Sem pedágios";
           });
         }
       });
@@ -184,6 +191,7 @@
       routingService.calculateRoute(params, result=>{
         if(result.routes && result.routes.length>0){
           const route = result.routes[0];
+          window.encodedRoutePolyline = route.sections[0].polyline;
           let totalDist = 0;
           const combinedLS = new H.geo.LineString();
           combinedLS.pushPoint({lat: currentLocation.lat, lng: currentLocation.lng});
@@ -211,7 +219,7 @@
               if(section.tolls && section.tolls.length>0){
                 const sectionToll = section.tolls.reduce((subTotal, toll)=>{
                   if(toll.fares && toll.fares.length>0){
-                    const sum = toll.fares.reduce((fareSum, fare)=> fareSum+(fare.price && typeof fare.price.value==='number'?fare.price.value:0), 0);
+                    const sum = toll.fares.reduce((fareSum, fare)=> fareSum + (fare.price && typeof fare.price.value==='number'?fare.price.value:0), 0);
                     return subTotal + sum;
                   }
                   return subTotal;
@@ -227,6 +235,7 @@
             document.getElementById("tollInfo").innerText = "Sem pedágios";
           }
           updateReceipt();
+          resetMap();
         } else {
           document.getElementById("resultado").innerText = "Nenhuma rota encontrada.";
           document.getElementById("tollInfo").innerText = "Sem pedágios";
@@ -236,6 +245,9 @@
         document.getElementById("resultado").innerText = "Erro ao calcular a rota.";
         document.getElementById("tollInfo").innerText = "Sem pedágios";
       });
+    }
+    function autoAdjustZoom(bBox){
+      map.getViewModel().setLookAtData({ bounds: bBox, padding: { top:300, bottom:300, left:300, right:300 }, animation:false });
     }
     function getStaticMapUrl(){
       if(!window.encodedRoutePolyline || !currentLocation || !destinationCoords) return "";
@@ -254,6 +266,9 @@
       const tot = kmVal + parseFloat(window.calculatedToll || 0);
       document.getElementById("pTotal").innerText = `Total: R$ ${tot.toFixed(2)}`;
     }
+    function resetMap(){
+      if(map) { initMap(currentLocation.lat, currentLocation.lng); addOriginMarker(currentLocation.lat, currentLocation.lng); }
+    }
     function prepararImpressao(){ updateReceipt(); window.print(); }
     function imprimirReciboPDF(){
       var element = document.getElementById("printContainer");
@@ -264,7 +279,7 @@
         html2canvas: { scale: 2 },
         jsPDF: { unit: 'in', format: [6,12], orientation: 'portrait' }
       };
-      html2pdf().set(opt).from(element).save();
+      html2pdf().set(opt).from(element).save().then(()=>{ resetMap(); });
     }
   </script>
 </body>
