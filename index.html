@@ -16,12 +16,11 @@
   <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
 
   <style>
-    /* Define tamanho de página para impressão: 6in x 12in */
+    /* Tamanho de impressão: 6in x 12in */
     @page {
       size: 6in 12in;
       margin: 0;
     }
-    /* Layout responsivo e minimalista */
     body {
       margin: 0;
       font-family: Arial, sans-serif;
@@ -33,9 +32,6 @@
       color: #fff;
       text-align: center;
       padding: 0.8rem 1rem;
-    }
-    header h1, footer p {
-      margin: 0;
     }
     main {
       max-width: 800px;
@@ -89,7 +85,6 @@
     #suggestions li:hover {
       background-color: #e0e0e0;
     }
-    /* Cabeçalho do recibo */
     #receipt {
       padding: 1rem;
       border-bottom: 1px solid #ccc;
@@ -101,7 +96,6 @@
       margin-bottom: 0.5rem;
       color: #2979ff;
     }
-    /* Mapa */
     #map {
       width: 100%;
       height: 400px;
@@ -125,7 +119,6 @@
     .imprimir-btn:hover {
       background: #00c853;
     }
-    /* Elementos com a classe no-print não aparecem na impressão */
     .no-print {
       display: block;
     }
@@ -137,7 +130,6 @@
         margin: 0;
       }
     }
-    /* Ajustes para telas menores */
     @media (max-width: 600px) {
       main {
         padding: 0.5rem;
@@ -286,9 +278,9 @@
       }
       platform = new H.service.Platform({ apikey: apiKey });
       const defaultLayers = platform.createDefaultLayers();
+      // Remove minZoom/maxZoom para permitir zoom out total
       map = new H.Map(mapContainer, defaultLayers.vector.normal.map, {
         center: { lat, lng },
-        // Remove minZoom e maxZoom para permitir zoom out
         zoom: 14
       });
       const ui = H.ui.UI.createDefault(map, defaultLayers);
@@ -359,39 +351,39 @@
         if (result.routes && result.routes.length > 0) {
           const route = result.routes[0];
           let totalDistance = 0;
-          // Cria um LineString que combine todos os pontos (origem, rota e destino)
+          // Cria um LineString combinando origem, rota e destino
           const combinedLineString = new H.geo.LineString();
-
           // Adiciona origem
           combinedLineString.pushPoint({ lat: currentLocation.lat, lng: currentLocation.lng });
 
           route.sections.forEach(section => {
-            // Distância dessa seção
             totalDistance += (section.summary.length || section.summary.distance || 0);
-            // Desenha a polyline
             const lines = H.geo.LineString.fromFlexiblePolyline(section.polyline);
             const routePolyline = new H.map.Polyline(lines, { style: { strokeColor: 'blue', lineWidth: 4 } });
             map.addObject(routePolyline);
-            // Adiciona pontos da polyline ao combinedLineString
+            // Adiciona todos os pontos da polyline
             const coords = lines.getLatLngAltArray();
             for (let i = 0; i < coords.length; i += 3) {
               combinedLineString.pushLatLngAlt(coords[i], coords[i + 1], 0);
             }
           });
-
           // Adiciona destino
           combinedLineString.pushPoint({ lat: destinoLat, lng: destinoLng });
 
-          // Atualiza distância
-          totalDistance = totalDistance / 1000; // de metros para km
+          // Distância em km
+          totalDistance = totalDistance / 1000;
           document.getElementById("resultado").innerText = `Distância: ${totalDistance.toFixed(2)} km`;
           window.calculatedDistance = totalDistance.toFixed(2);
 
-          // Auto zoom com bounding box do combinedLineString e padding grande
+          // Auto zoom: bounding box do combinedLineString + padding grande
           const boundingBox = combinedLineString.getBoundingBox();
           map.getViewModel().setLookAtData({
             bounds: boundingBox,
-            padding: { top: 200, bottom: 200, left: 200, right: 200 }
+            // Aumente o padding se ainda cortar a rota
+            padding: { top: 800, bottom: 800, left: 800, right: 800 },
+            // Permite zoom-out máximo
+            minZoom: 1,
+            animation: false
           });
 
           // Calcula pedágio
@@ -419,7 +411,6 @@
             console.error("Erro no cálculo do pedágio:", error);
             document.getElementById("tollInfo").innerText = "Sem pedágios";
           }
-
           updateReceipt();
         } else {
           document.getElementById("resultado").innerText = "Nenhuma rota encontrada.";
