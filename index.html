@@ -16,6 +16,8 @@
   <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
   <!-- Biblioteca jsPDF para geração de PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- Biblioteca html2canvas para capturar imagem do mapa -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <style>
     :root {
@@ -149,7 +151,6 @@
       <button onclick="calcularDistancia()">Calcular</button>
       <p id="resultado"></p>
       <p id="tollInfo"></p>
-      <!-- Botão para emitir recibo em PDF -->
       <button id="pdfButton" onclick="emitirRecibo()">Emitir Recibo</button>
     </section>
     <div id="map"></div>
@@ -159,7 +160,7 @@
   </footer>
 
   <script>
-    const apiKey = "o2UlrzSQyEyGz0GG8MLHBFVyQrERHJiLzV0JqRtyexg"; // Substitua pela sua chave válida HERE
+    const apiKey = "o2UlrzSQyEyGz0GG8MLHBFVyQrERHJiLzV0JqRtyexg";
     let map = null, platform;
     let currentLocation = null;
     let destinationCoords = null;
@@ -167,10 +168,12 @@
     let lastQuery = "";
     const fallbackLocation = { lat: -23.550520, lng: -46.633308 };
 
-    // Variáveis globais para armazenar os dados do trajeto
+    // Variáveis globais para armazenar dados do recibo
     window.calculatedDistance = "";
     window.calculatedToll = "";
-    
+    window.originAddress = "";
+    window.destinationAddress = "";
+
     function getUserLocation() {
       return new Promise((resolve) => {
         if (navigator.geolocation) {
@@ -188,6 +191,24 @@
       });
     }
 
+    // Função de reverse geocoding para converter coordenadas em endereço
+    function reverseGeocode(coords) {
+      const url = `https://revgeocode.search.hereapi.com/v1/revgeocode?at=${coords.lat},${coords.lng}&lang=pt-BR&apiKey=${apiKey}`;
+      return fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          if (data.items && data.items.length > 0) {
+            return data.items[0].address.label;
+          } else {
+            return "Endereço não encontrado";
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          return "Endereço não disponível";
+        });
+    }
+
     function initMap(lat, lng) {
       const mapContainer = document.getElementById('map');
       if (!mapContainer) return;
@@ -200,7 +221,6 @@
       }
       platform = new H.service.Platform({ apikey: apiKey });
       const defaultLayers = platform.createDefaultLayers();
-      // Define zoom fixo com minZoom e maxZoom iguais
       map = new H.Map(mapContainer, defaultLayers.vector.normal.map, { 
         center: { lat, lng }, 
         zoom: 14, 
@@ -209,7 +229,7 @@
       });
       new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
       const ui = H.ui.UI.createDefault(map, defaultLayers);
-      ui.removeControl("zoom"); // Remove os controles de zoom
+      ui.removeControl("zoom");
     }
 
     function addMarker(lat, lng, iconUrl) {
@@ -240,6 +260,9 @@
                 li.addEventListener("click", () => {
                   document.getElementById("destino").value = item.title;
                   destinationCoords = { lat: item.position.lat, lng: item.position.lng };
+                  if (item.address && item.address.label) {
+                    window.destinationAddress = item.address.label;
+                  }
                   suggestionsList.innerHTML = "";
                 });
                 suggestionsList.appendChild(li);
@@ -266,17 +289,20 @@
       }
     });
 
-    // Sempre utiliza a localização atual
+    // Sempre utiliza a localização atual e obtém o endereço de origem via reverse geocoding
     function calcularDistancia() {
       getUserLocation().then(location => {
         currentLocation = location;
         initMap(location.lat, location.lng);
         addMarker(location.lat, location.lng, 'https://maps.gstatic.com/mapfiles/ms2/micons/red-dot.png');
+        reverseGeocode(location).then(address => {
+          window.originAddress = address;
+        });
         if (destinationCoords) {
           processRoute(destinationCoords.lat, destinationCoords.lng);
         } else {
           const destino = document.getElementById("destino").value;
-          if(destino.trim() === ""){
+          if (destino.trim() === "") {
             document.getElementById("resultado").innerText = "Por favor, insira um destino.";
             document.getElementById("tollInfo").innerText = "";
             return;
@@ -287,6 +313,9 @@
               if (data.items && data.items.length > 0) {
                 const destinoLat = data.items[0].position.lat;
                 const destinoLng = data.items[0].position.lng;
+                if (data.items[0].address && data.items[0].address.label) {
+                  window.destinationAddress = data.items[0].address.label;
+                }
                 processRoute(destinoLat, destinoLng);
               } else {
                 document.getElementById("resultado").innerText = "Destino não encontrado.";
@@ -304,7 +333,6 @@
 
     function processRoute(destinoLat, destinoLng) {
       addMarker(destinoLat, destinoLng, 'https://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png');
-      // Armazena as coordenadas de destino para o recibo
       window.destinationCoords = { lat: destinoLat, lng: destinoLng };
       const routingService = platform.getRoutingService(null, 8);
       const routeRequestParams = {
@@ -321,7 +349,6 @@
             return acc + dist;
           }, 0) / 1000;
           document.getElementById("resultado").innerText = `Distância: ${totalDistance.toFixed(2)} km`;
-          // Armazena a distância para o recibo
           window.calculatedDistance = totalDistance.toFixed(2);
 
           route.sections.forEach(section => {
@@ -353,7 +380,6 @@
             document.getElementById("tollInfo").innerText = tollCost > 0
               ? `Pedágio estimado: R$ ${tollCost.toFixed(2)}`
               : "Sem pedágios";
-            // Armazena o valor do pedágio para o recibo
             window.calculatedToll = tollCost.toFixed(2);
           } catch (error) {
             console.error("Erro no cálculo do pedágio:", error);
@@ -370,26 +396,29 @@
       });
     }
 
-    // Função para gerar o PDF do recibo da viagem
+    // Gera o PDF com os dados da viagem e a imagem do mapa com o trajeto
     function emitirRecibo() {
       if (!window.calculatedDistance) {
         alert("Por favor, calcule a rota primeiro.");
         return;
       }
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      doc.setFontSize(16);
-      doc.text("Recibo de Viagem", 10, 20);
-      doc.setFontSize(12);
-      doc.text(`Origem: ${currentLocation.lat.toFixed(5)}, ${currentLocation.lng.toFixed(5)}`, 10, 40);
-      if (window.destinationCoords) {
-        doc.text(`Destino: ${window.destinationCoords.lat.toFixed(5)}, ${window.destinationCoords.lng.toFixed(5)}`, 10, 50);
-      }
-      doc.text(`Distância: ${window.calculatedDistance} km`, 10, 60);
-      doc.text(`Pedágio: R$ ${window.calculatedToll}`, 10, 70);
-      const hoje = new Date();
-      doc.text(`Data: ${hoje.toLocaleDateString()} ${hoje.toLocaleTimeString()}`, 10, 80);
-      doc.save('recibo_viagem.pdf');
+      html2canvas(document.getElementById("map")).then(canvas => {
+        const imgData = canvas.toDataURL("image/png");
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.setFontSize(16);
+        doc.text("Recibo de Viagem", 10, 20);
+        doc.setFontSize(12);
+        doc.text(`Origem: ${window.originAddress || "Não disponível"}`, 10, 40);
+        doc.text(`Destino: ${window.destinationAddress || "Não disponível"}`, 10, 50);
+        doc.text(`Distância: ${window.calculatedDistance} km`, 10, 60);
+        doc.text(`Pedágio: R$ ${window.calculatedToll}`, 10, 70);
+        const hoje = new Date();
+        doc.text(`Data: ${hoje.toLocaleDateString()} ${hoje.toLocaleTimeString()}`, 10, 80);
+        // Adiciona a imagem do mapa ao PDF
+        doc.addImage(imgData, 'PNG', 10, 90, 190, 100);
+        doc.save('recibo_viagem.pdf');
+      });
     }
   </script>
 </body>
