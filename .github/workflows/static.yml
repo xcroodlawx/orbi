@@ -14,9 +14,10 @@
   <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js"></script>
   <script src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"></script>
   <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
+  <!-- Biblioteca jsPDF para geração de PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <style>
-    /* Paleta de cores: branco, azul e toques suaves de rosa */
     :root {
       --cor-fundo: #fafcfe;
       --cor-primaria: #cce4f7;
@@ -148,12 +149,15 @@
       <button onclick="calcularDistancia()">Calcular</button>
       <p id="resultado"></p>
       <p id="tollInfo"></p>
+      <!-- Botão para emitir recibo em PDF -->
+      <button id="pdfButton" onclick="emitirRecibo()">Emitir Recibo</button>
     </section>
     <div id="map"></div>
   </main>
   <footer>
     <p>&copy; 2025 Orbi. Todos os direitos reservados.</p>
   </footer>
+
   <script>
     const apiKey = "o2UlrzSQyEyGz0GG8MLHBFVyQrERHJiLzV0JqRtyexg"; // Substitua pela sua chave válida HERE
     let map = null, platform;
@@ -163,6 +167,10 @@
     let lastQuery = "";
     const fallbackLocation = { lat: -23.550520, lng: -46.633308 };
 
+    // Variáveis globais para armazenar os dados do trajeto
+    window.calculatedDistance = "";
+    window.calculatedToll = "";
+    
     function getUserLocation() {
       return new Promise((resolve) => {
         if (navigator.geolocation) {
@@ -192,9 +200,16 @@
       }
       platform = new H.service.Platform({ apikey: apiKey });
       const defaultLayers = platform.createDefaultLayers();
-      map = new H.Map(mapContainer, defaultLayers.vector.normal.map, { center: { lat, lng }, zoom: 14 });
+      // Define zoom fixo com minZoom e maxZoom iguais
+      map = new H.Map(mapContainer, defaultLayers.vector.normal.map, { 
+        center: { lat, lng }, 
+        zoom: 14, 
+        minZoom: 14, 
+        maxZoom: 14 
+      });
       new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
-      H.ui.UI.createDefault(map, defaultLayers);
+      const ui = H.ui.UI.createDefault(map, defaultLayers);
+      ui.removeControl("zoom"); // Remove os controles de zoom
     }
 
     function addMarker(lat, lng, iconUrl) {
@@ -235,7 +250,6 @@
         .catch(error => console.error("Erro ao buscar sugestões:", error));
     }
 
-    // Busca sugestões enquanto o usuário digita
     document.getElementById("destino").addEventListener("input", function() {
       const query = this.value.trim();
       destinationCoords = null;
@@ -290,6 +304,8 @@
 
     function processRoute(destinoLat, destinoLng) {
       addMarker(destinoLat, destinoLng, 'https://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png');
+      // Armazena as coordenadas de destino para o recibo
+      window.destinationCoords = { lat: destinoLat, lng: destinoLng };
       const routingService = platform.getRoutingService(null, 8);
       const routeRequestParams = {
         transportMode: 'car',
@@ -305,6 +321,8 @@
             return acc + dist;
           }, 0) / 1000;
           document.getElementById("resultado").innerText = `Distância: ${totalDistance.toFixed(2)} km`;
+          // Armazena a distância para o recibo
+          window.calculatedDistance = totalDistance.toFixed(2);
 
           route.sections.forEach(section => {
             const lines = H.geo.LineString.fromFlexiblePolyline(section.polyline);
@@ -335,6 +353,8 @@
             document.getElementById("tollInfo").innerText = tollCost > 0
               ? `Pedágio estimado: R$ ${tollCost.toFixed(2)}`
               : "Sem pedágios";
+            // Armazena o valor do pedágio para o recibo
+            window.calculatedToll = tollCost.toFixed(2);
           } catch (error) {
             console.error("Erro no cálculo do pedágio:", error);
             document.getElementById("tollInfo").innerText = "Sem pedágios";
@@ -348,6 +368,28 @@
         document.getElementById("resultado").innerText = "Erro ao calcular a rota.";
         document.getElementById("tollInfo").innerText = "Sem pedágios";
       });
+    }
+
+    // Função para gerar o PDF do recibo da viagem
+    function emitirRecibo() {
+      if (!window.calculatedDistance) {
+        alert("Por favor, calcule a rota primeiro.");
+        return;
+      }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFontSize(16);
+      doc.text("Recibo de Viagem", 10, 20);
+      doc.setFontSize(12);
+      doc.text(`Origem: ${currentLocation.lat.toFixed(5)}, ${currentLocation.lng.toFixed(5)}`, 10, 40);
+      if (window.destinationCoords) {
+        doc.text(`Destino: ${window.destinationCoords.lat.toFixed(5)}, ${window.destinationCoords.lng.toFixed(5)}`, 10, 50);
+      }
+      doc.text(`Distância: ${window.calculatedDistance} km`, 10, 60);
+      doc.text(`Pedágio: R$ ${window.calculatedToll}`, 10, 70);
+      const hoje = new Date();
+      doc.text(`Data: ${hoje.toLocaleDateString()} ${hoje.toLocaleTimeString()}`, 10, 80);
+      doc.save('recibo_viagem.pdf');
     }
   </script>
 </body>
