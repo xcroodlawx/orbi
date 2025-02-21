@@ -38,11 +38,7 @@
       #map { display: none; } 
       body { margin: 0; } 
     }
-    @media (max-width:600px) {
-      main { padding: 0.5rem; }
-      .calc-section, #receipt, #map, .pdf-map { padding: 0.8rem; }
-      .calc-section input, .calc-section button, .imprimir-btn { font-size: 0.9rem; }
-    }
+    @media (max-width:600px) { main { padding: 0.5rem; } .calc-section, #receipt, #map, .pdf-map { padding: 0.8rem; } .calc-section input, .calc-section button, .imprimir-btn { font-size: 0.9rem; } }
   </style>
 </head>
 <body>
@@ -84,7 +80,7 @@
     document.getElementById("destino").addEventListener("input", function(){
       const q = this.value.trim();
       destinationCoords = null;
-      if(q.length < 1){ document.getElementById("suggestions").innerHTML=""; return; }
+      if(q.length < 1){ document.getElementById("suggestions").innerHTML = ""; return; }
       fetchSuggestions(q);
     });
     function fetchSuggestions(q){
@@ -114,8 +110,8 @@
       return new Promise((resolve)=>{
         if(navigator.geolocation){
           navigator.geolocation.getCurrentPosition(
-            pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-            error => { console.error("Erro ao obter localização:", error); resolve(fallbackLocation); }
+            pos=>resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+            error=>{ console.error("Erro ao obter localização:", error); resolve(fallbackLocation); }
           );
         } else { resolve(fallbackLocation); }
       });
@@ -206,10 +202,10 @@
           map.getViewPort().resize();
           setTimeout(()=>{
             const bBox = combinedLS.getBoundingBox();
-            autoAdjustZoom(bBox);
+            map.getViewModel().setLookAtData({ bounds: bBox, padding: { top:300, bottom:300, left:300, right:300 }, animation:false });
             const staticUrl = getStaticMapUrl();
             document.getElementById("staticMapContainer").innerHTML = `<img src="${staticUrl}" style="width:100%; border-radius:8px;">`;
-          }, 1500);
+          },1500);
           try{
             const tollCost = route.sections.reduce((total, section)=>{
               if(section.tolls && section.tolls.length>0){
@@ -240,21 +236,6 @@
         document.getElementById("resultado").innerText = "Erro ao calcular a rota.";
         document.getElementById("tollInfo").innerText = "Sem pedágios";
       });
-    }
-    function autoAdjustZoom(bBox){
-      for(let z=5; z<=15; z++){
-        map.setZoom(z);
-        const originScreen = map.geoToScreen(markerOrigin.getGeometry());
-        const destScreen = map.geoToScreen(markerDestination.getGeometry());
-        const w = document.getElementById("map").offsetWidth;
-        const h = document.getElementById("map").offsetHeight;
-        if(originScreen.x>=0 && originScreen.x<=w && originScreen.y>=0 && originScreen.y<=h &&
-           destScreen.x>=0 && destScreen.x<=w && destScreen.y>=0 && destScreen.y<=h){
-             map.getViewModel().setLookAtData({ bounds: bBox, padding: { top:300, bottom:300, left:300, right:300 }, animation:false });
-             return;
-        }
-      }
-      map.getViewModel().setLookAtData({ bounds: bBox, padding: { top:300, bottom:300, left:300, right:300 }, animation:false });
     }
     function getStaticMapUrl(){
       if(!window.encodedRoutePolyline || !currentLocation || !destinationCoords) return "";
