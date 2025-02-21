@@ -16,8 +16,6 @@
   <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
   <!-- Biblioteca jsPDF para geração de PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <!-- Biblioteca html2canvas para capturar imagem do mapa -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <style>
     :root {
@@ -117,6 +115,7 @@
       height: 400px;
       border: 1px solid #ddd;
       border-radius: 4px;
+      pointer-events: none;
     }
     footer {
       background-color: var(--cor-primaria);
@@ -134,7 +133,8 @@
 </head>
 <body>
   <header>
-    <img src="https://via.placeholder.com/150x40?text=Logo+Orbi" alt="Logo Orbi" class="logo" />
+    <!-- Alterado para uma URL confiável para o logo -->
+    <img src="https://dummyimage.com/150x40/ccc/000.png&text=Logo+Orbi" alt="Logo Orbi" class="logo" />
     <nav>
       <ul>
         <li><a href="#home">Início</a></li>
@@ -168,11 +168,13 @@
     let lastQuery = "";
     const fallbackLocation = { lat: -23.550520, lng: -46.633308 };
 
-    // Variáveis globais para armazenar dados do recibo
+    // Variáveis globais para os dados do recibo
     window.calculatedDistance = "";
     window.calculatedToll = "";
     window.originAddress = "";
     window.destinationAddress = "";
+    window.encodedRoutePolyline = "";
+    window.cachedStaticMapImage = ""; // Cache para imagem estática
 
     function getUserLocation() {
       return new Promise((resolve) => {
@@ -191,7 +193,6 @@
       });
     }
 
-    // Função de reverse geocoding para converter coordenadas em endereço
     function reverseGeocode(coords) {
       const url = `https://revgeocode.search.hereapi.com/v1/revgeocode?at=${coords.lat},${coords.lng}&lang=pt-BR&apiKey=${apiKey}`;
       return fetch(url)
@@ -227,7 +228,6 @@
         minZoom: 14, 
         maxZoom: 14 
       });
-      new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
       const ui = H.ui.UI.createDefault(map, defaultLayers);
       ui.removeControl("zoom");
     }
@@ -289,7 +289,6 @@
       }
     });
 
-    // Sempre utiliza a localização atual e obtém o endereço de origem via reverse geocoding
     function calcularDistancia() {
       getUserLocation().then(location => {
         currentLocation = location;
@@ -344,6 +343,9 @@
       routingService.calculateRoute(routeRequestParams, result => {
         if (result.routes && result.routes.length > 0) {
           const route = result.routes[0];
+          if (route.sections && route.sections.length > 0) {
+            window.encodedRoutePolyline = route.sections[0].polyline || "";
+          }
           const totalDistance = route.sections.reduce((acc, section) => {
             const dist = section.summary.length || section.summary.distance || 0;
             return acc + dist;
@@ -396,14 +398,49 @@
       });
     }
 
-    // Gera o PDF com os dados da viagem e a imagem do mapa com o trajeto
+    // Função que busca a imagem estática usando a API do HERE e implementa cache para evitar chamadas repetidas
+    function getStaticMapImageData() {
+      if (!window.encodedRoutePolyline) {
+        return Promise.reject("Polyline não definida.");
+      }
+      if(window.cachedStaticMapImage) {
+        return Promise.resolve(window.cachedStaticMapImage);
+      }
+      const encodedPolyline = encodeURIComponent(window.encodedRoutePolyline);
+      const centerLat = (currentLocation.lat + destinationCoords.lat) / 2;
+      const centerLng = (currentLocation.lng + destinationCoords.lng) / 2;
+      const staticMapUrl = `https://image.maps.ls.hereapi.com/mia/1.6/mapview?apiKey=${apiKey}` +
+        `&c=${centerLat},${centerLng}&z=14` +
+        `&poix0=${currentLocation.lat},${currentLocation.lng};64;red` +
+        `&poix1=${destinationCoords.lat},${destinationCoords.lng};64;blue` +
+        `&polylines=0:enc:${encodedPolyline};lineColor:0000FF;lineWidth:5`;
+      
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0);
+          const imageData = canvas.toDataURL("image/png");
+          window.cachedStaticMapImage = imageData;
+          resolve(imageData);
+        };
+        img.onerror = (err) => {
+          reject(err);
+        };
+        img.src = staticMapUrl;
+      });
+    }
+
     function emitirRecibo() {
-      if (!window.calculatedDistance) {
+      if (!window.calculatedDistance || !currentLocation || !destinationCoords || !window.encodedRoutePolyline) {
         alert("Por favor, calcule a rota primeiro.");
         return;
       }
-      html2canvas(document.getElementById("map")).then(canvas => {
-        const imgData = canvas.toDataURL("image/png");
+      getStaticMapImageData().then(imgData => {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         doc.setFontSize(16);
@@ -415,9 +452,11 @@
         doc.text(`Pedágio: R$ ${window.calculatedToll}`, 10, 70);
         const hoje = new Date();
         doc.text(`Data: ${hoje.toLocaleDateString()} ${hoje.toLocaleTimeString()}`, 10, 80);
-        // Adiciona a imagem do mapa ao PDF
         doc.addImage(imgData, 'PNG', 10, 90, 190, 100);
         doc.save('recibo_viagem.pdf');
+      }).catch(error => {
+        console.error("Erro ao gerar imagem estática:", error);
+        alert("Erro ao gerar imagem do mapa para o PDF.");
       });
     }
   </script>
