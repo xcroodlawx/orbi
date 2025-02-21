@@ -13,25 +13,27 @@
   <script src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"></script>
   <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
   <style>
-    /* Regra @page para definir tamanho da impressão: 6in x 12in */
+    /* Regra @page para impressão: 6in x 12in */
     @page {
-      size: 11in 17in;
+      size: 6in 12in;
       margin: 0;
     }
     
+    /* Paleta de cores vibrante e design slim */
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      background-color: #fafcfe;
+      background-color: #f5f5f5;
       color: #333;
     }
     header, footer {
-      background-color: #cce4f7;
+      background-color: #2979ff;
+      color: #fff;
       text-align: center;
       padding: 0.8rem 1rem;
     }
-    header img {
-      max-height: 40px;
+    header h1, footer p {
+      margin: 0;
     }
     main {
       max-width: 800px;
@@ -39,32 +41,42 @@
       padding: 1rem;
     }
     .calc-section {
+      background: #fff;
+      padding: 1rem;
       margin-bottom: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .calc-section h2 {
+      margin-bottom: 0.5rem;
+      text-align: center;
+      color: #2979ff;
     }
     .calc-section input,
     .calc-section button {
       width: 100%;
       padding: 0.6rem;
-      margin: 0.2rem 0;
+      margin: 0.4rem 0;
       border: 1px solid #ccc;
-      border-radius: 4px;
+      border-radius: 8px;
       font-size: 1rem;
     }
     .calc-section button {
-      background: #e8d7f0;
+      background: #ff4081;
       color: #fff;
       border: none;
       cursor: pointer;
       transition: background 0.2s;
     }
     .calc-section button:hover {
-      background: #f3a2d4;
+      background: #f50057;
     }
     #suggestions {
       list-style: none;
       padding: 0.5rem;
       border: 1px solid #ccc;
-      border-radius: 4px;
+      border-radius: 8px;
+      background: #fff;
       max-height: 150px;
       overflow-y: auto;
     }
@@ -73,41 +85,45 @@
       cursor: pointer;
     }
     #suggestions li:hover {
-      background-color: #cce4f7;
+      background-color: #e0e0e0;
     }
     /* Cabeçalho do recibo (exibido acima do mapa) */
     #receipt {
       padding: 1rem;
       border-bottom: 1px solid #ccc;
       margin-bottom: 1rem;
+      background: #fff;
+      border-radius: 8px;
     }
     #receipt h2 {
       margin-bottom: 0.5rem;
+      color: #2979ff;
     }
-    /* Mapa: removidas bordas laterais e superior, mantendo apenas uma borda inferior */
+    /* Mapa: sem bordas laterais ou superiores, apenas borda inferior */
     #map {
       width: 100%;
-      height: 1000px;
-      border-top: none;
-      border-left: none;
-      border-right: none;
+      height: 400px;
+      border: none;
       border-bottom: 1px solid #ccc;
       margin-bottom: 1rem;
+      border-radius: 8px;
       pointer-events: none;
     }
     .imprimir-btn {
-      background: #007bff;
+      background: #00e676;
       color: #fff;
       padding: 0.6rem;
       border: none;
-      border-radius: 4px;
+      border-radius: 8px;
       cursor: pointer;
+      width: 100%;
       margin-top: 1rem;
+      font-size: 1rem;
     }
     .imprimir-btn:hover {
-      background: #0056b3;
+      background: #00c853;
     }
-    /* Elementos com a classe no-print serão ocultados na impressão */
+    /* Oculta elementos com a classe no-print na impressão */
     .no-print {
       display: block;
     }
@@ -119,11 +135,23 @@
         margin: 0;
       }
     }
+    /* Mobile ajustes */
+    @media (max-width: 600px) {
+      main {
+        padding: 0.5rem;
+      }
+      .calc-section, #receipt, #map {
+        padding: 0.8rem;
+      }
+      .calc-section input, .calc-section button, .imprimir-btn {
+        font-size: 0.9rem;
+      }
+    }
   </style>
 </head>
 <body>
   <header class="no-print">
-    <img src="https://dummyimage.com/150x40/ccc/000.png&text=Logo+Orbi" alt="Logo Orbi" />
+    <!-- Logotipo removido; somente o título permanece -->
     <h1>Orbi</h1>
   </header>
   <main id="printContainer">
@@ -134,7 +162,6 @@
       <button onclick="calcularDistancia()">Calcular</button>
       <p id="resultado"></p>
       <p id="tollInfo"></p>
-      <!-- Botão que aciona a impressão padrão do navegador -->
       <button class="imprimir-btn no-print" onclick="prepararImpressao()">Imprimir Recibo</button>
     </section>
     
@@ -155,7 +182,6 @@
   <footer class="no-print">
     <p>&copy; 2025 Orbi. Todos os direitos reservados.</p>
   </footer>
-
   <script>
     // Substitua "SUA_API_KEY_AQUI" pela sua chave válida HERE.
     const apiKey = "o2UlrzSQyEyGz0GG8MLHBFVyQrERHJiLzV0JqRtyexg";
@@ -171,7 +197,7 @@
     window.destinationAddress = "";
     window.encodedRoutePolyline = "";
 
-    // Inicia a busca de sugestões enquanto o usuário digita (sem debounce)
+    // Inicia a busca de sugestões imediatamente
     document.getElementById("destino").addEventListener("input", function() {
       const query = this.value.trim();
       destinationCoords = null;
@@ -282,7 +308,7 @@
       getUserLocation().then(location => {
         currentLocation = location;
         initMap(location.lat, location.lng);
-        // Marca a origem com ícone vermelho
+        // Marca a origem (ícone vermelho)
         addMarker(location.lat, location.lng, 'https://maps.gstatic.com/mapfiles/ms2/micons/red-dot.png');
         reverseGeocode(location).then(address => {
           window.originAddress = address;
@@ -322,7 +348,7 @@
     }
 
     function processRoute(destinoLat, destinoLng) {
-      // Marca o destino com ícone azul
+      // Marca o destino (ícone azul)
       addMarker(destinoLat, destinoLng, 'https://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png');
       window.destinationCoords = { lat: destinoLat, lng: destinoLng };
       const routingService = platform.getRoutingService(null, 8);
@@ -350,7 +376,7 @@
             const routePolyline = new H.map.Polyline(lines, { style: { strokeColor: 'blue', lineWidth: 4 } });
             map.addObject(routePolyline);
           });
-          // Ajusta o mapa para incluir todos os marcadores e a rota com padding para evitar cortes
+          // Auto zoom: ajusta a vista com padding para não cortar marcadores e rota
           const objects = map.getObjects().filter(o => typeof o.getBoundingBox === 'function');
           const bounds = objects.reduce((b, o) => b ? b.merge(o.getBoundingBox()) : o.getBoundingBox(), null);
           if (bounds) {
