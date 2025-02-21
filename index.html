@@ -2,14 +2,14 @@
 <html lang="pt">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Permissions-Policy" content="geolocation=(self)" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Orbi - Calculadora de Distância com Pedágio</title>
-  <link rel="stylesheet" type="text/css" href="https://js.api.here.com/v3/3.1/mapsjs-ui.css" />
+  <link rel="stylesheet" type="text/css" href="https://js.api.here.com/v3/3.1/mapsjs-ui.css"/>
   <script src="https://js.api.here.com/v3/3.1/mapsjs-core.js"></script>
   <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js"></script>
   <script src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"></script>
   <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
   <style>
     @page { size: 6in 12in; margin: 0; }
     body { margin: 0; font-family: Arial, sans-serif; background-color: #f5f5f5; color: #333; }
@@ -44,7 +44,7 @@
       <button onclick="calcularDistancia()">Calcular</button>
       <p id="resultado"></p>
       <p id="tollInfo"></p>
-      <button class="imprimir-btn no-print" onclick="prepararImpressao()">Imprimir Recibo</button>
+      <button class="imprimir-btn no-print" onclick="imprimirReciboPDF()">Imprimir Recibo em PDF</button>
     </section>
     <div id="receipt">
       <h2>Recibo de Viagem</h2>
@@ -69,21 +69,19 @@
     window.destinationAddress = "";
     window.encodedRoutePolyline = "";
     let mapGroup = null, markerOrigin = null, markerDestination = null;
-
     document.getElementById("destino").addEventListener("input", function(){
       const q = this.value.trim();
       destinationCoords = null;
-      if(q.length < 1){ document.getElementById("suggestions").innerHTML=""; return; }
+      if(q.length < 1){ document.getElementById("suggestions").innerHTML = ""; return; }
       fetchSuggestions(q);
     });
-
     function fetchSuggestions(q){
       if(!currentLocation){ getUserLocation().then(loc=>{ currentLocation = loc; fetchSuggestions(q); }); return; }
       const url = `https://autosuggest.search.hereapi.com/v1/autosuggest?at=${currentLocation.lat},${currentLocation.lng}&q=${encodeURIComponent(q)}&apiKey=${apiKey}`;
       fetch(url).then(r=>r.json()).then(data=>{
         const sl = document.getElementById("suggestions");
         sl.innerHTML = "";
-        if(data.items && data.items.length>0){
+        if(data.items && data.items.length > 0){
           data.items.forEach(item=>{
             if(item.position){
               let li = document.createElement("li");
@@ -100,46 +98,41 @@
         }
       }).catch(e=>console.error("Erro ao buscar sugestões:", e));
     }
-
     function getUserLocation(){
       return new Promise((resolve)=>{
         if(navigator.geolocation){
-          navigator.geolocation.getCurrentPosition(pos=>resolve({lat: pos.coords.latitude, lng: pos.coords.longitude}),
-          error=>{ console.error("Erro:", error); resolve(fallbackLocation); });
+          navigator.geolocation.getCurrentPosition(
+            pos=>resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+            error=>{ console.error("Erro:", error); resolve(fallbackLocation); }
+          );
         } else { resolve(fallbackLocation); }
       });
     }
-
     function reverseGeocode(coords){
       const url = `https://revgeocode.search.hereapi.com/v1/revgeocode?at=${coords.lat},${coords.lng}&lang=pt-BR&apiKey=${apiKey}`;
-      return fetch(url).then(r=>r.json()).then(data=> data.items && data.items.length>0 ? data.items[0].address.label : "Endereço não encontrado")
-      .catch(err=>{ console.error(err); return "Endereço não disponível"; });
+      return fetch(url).then(r=>r.json()).then(data=> data.items && data.items.length > 0 ? data.items[0].address.label : "Endereço não encontrado").catch(err=>{ console.error(err); return "Endereço não disponível"; });
     }
-
     function initMap(lat, lng){
       const mc = document.getElementById("map");
       if(!mc)return;
       if(map){ map.dispose(); map = null; }
       while(mc.firstChild){ mc.removeChild(mc.firstChild); }
-      platform = new H.service.Platform({apikey: apiKey});
+      platform = new H.service.Platform({ apikey: apiKey });
       const dl = platform.createDefaultLayers();
-      map = new H.Map(mc, dl.vector.normal.map, { center: {lat, lng}, zoom: 14 });
+      map = new H.Map(mc, dl.vector.normal.map, { center: { lat, lng }, zoom: 14 });
       mapGroup = new H.map.Group();
       map.addObject(mapGroup);
       const ui = H.ui.UI.createDefault(map, dl);
       ui.removeControl("zoom");
     }
-
     function addOriginMarker(lat, lng){
-      markerOrigin = new H.map.Marker({lat, lng}, {icon: new H.map.Icon('https://maps.gstatic.com/mapfiles/ms2/micons/red-dot.png')});
+      markerOrigin = new H.map.Marker({ lat, lng }, { icon: new H.map.Icon('https://maps.gstatic.com/mapfiles/ms2/micons/red-dot.png') });
       mapGroup.addObject(markerOrigin);
     }
-
     function addDestinationMarker(lat, lng){
-      markerDestination = new H.map.Marker({lat, lng}, {icon: new H.map.Icon('https://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png')});
+      markerDestination = new H.map.Marker({ lat, lng }, { icon: new H.map.Icon('https://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png') });
       mapGroup.addObject(markerDestination);
     }
-
     function calcularDistancia(){
       getUserLocation().then(location=>{
         currentLocation = location;
@@ -155,10 +148,10 @@
             return;
           }
           fetch(`https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(destino)}&apiKey=${apiKey}`)
-          .then(r=>r.json()).then(data=>{
-            if(data.items && data.items.length>0){
-              const destLat = data.items[0].position.lat, destLng = data.items[0].position.lng;
-              if(data.items[0].address && data.items[0].address.label){ window.destinationAddress = data.items[0].address.label; }
+          .then(r=>r.json()).then(d=>{
+            if(d.items && d.items.length>0){
+              const destLat = d.items[0].position.lat, destLng = d.items[0].position.lng;
+              if(d.items[0].address && d.items[0].address.label){ window.destinationAddress = d.items[0].address.label; }
               processRoute(destLat, destLng);
             } else { document.getElementById("resultado").innerText="Destino não encontrado."; document.getElementById("tollInfo").innerText="Sem pedágios"; }
           }).catch(e=>{
@@ -169,11 +162,10 @@
         }
       });
     }
-
     function processRoute(destLat, destLng){
       addDestinationMarker(destLat, destLng);
-      window.destinationCoords = {lat: destLat, lng: destLng};
-      const routingService = platform.getRoutingService(null,8);
+      window.destinationCoords = { lat: destLat, lng: destLng };
+      const routingService = platform.getRoutingService(null, 8);
       const params = {
         transportMode: 'car',
         origin: `${currentLocation.lat},${currentLocation.lng}`,
@@ -185,72 +177,70 @@
           const route = result.routes[0];
           let totalDist = 0;
           const combinedLS = new H.geo.LineString();
-          combinedLS.pushPoint({lat: currentLocation.lat, lng: currentLocation.lng});
+          combinedLS.pushPoint({ lat: currentLocation.lat, lng: currentLocation.lng });
           route.sections.forEach(section=>{
             totalDist += (section.summary.length || section.summary.distance || 0);
             const ls = H.geo.LineString.fromFlexiblePolyline(section.polyline);
             const poly = new H.map.Polyline(ls, { style: { strokeColor: 'blue', lineWidth: 4 } });
             mapGroup.addObject(poly);
             const coords = ls.getLatLngAltArray();
-            for(let i=0; i<coords.length; i+=3){ combinedLS.pushLatLngAlt(coords[i], coords[i+1], 0); }
+            for(let i = 0; i < coords.length; i += 3){ combinedLS.pushLatLngAlt(coords[i], coords[i+1], 0); }
           });
-          combinedLS.pushPoint({lat: destLat, lng: destLng});
+          combinedLS.pushPoint({ lat: destLat, lng: destLng });
           totalDist = totalDist / 1000;
           document.getElementById("resultado").innerText = `Distância: ${totalDist.toFixed(2)} km`;
           window.calculatedDistance = totalDist.toFixed(2);
           map.getViewPort().resize();
-          setTimeout(()=>{
+          setTimeout(()=>{ 
             const bBox = combinedLS.getBoundingBox();
             autoAdjustZoom(bBox);
-          },1500);
+          }, 1000);
           try{
             const tollCost = route.sections.reduce((total, section)=>{
               if(section.tolls && section.tolls.length>0){
                 const sectionToll = section.tolls.reduce((subTotal, toll)=>{
                   if(toll.fares && toll.fares.length>0){
-                    const sum = toll.fares.reduce((fareSum, fare)=> fareSum + (fare.price && typeof fare.price.value==='number'?fare.price.value:0), 0);
+                    const sum = toll.fares.reduce((fareSum, fare)=> fareSum + (fare.price && typeof fare.price.value === 'number' ? fare.price.value : 0), 0);
                     return subTotal + sum;
                   }
                   return subTotal;
-                },0);
+                }, 0);
                 return total + sectionToll;
               }
               return total;
-            },0);
-            document.getElementById("tollInfo").innerText = tollCost>0 ? `Pedágio estimado: R$ ${tollCost.toFixed(2)}` : "Sem pedágios";
+            }, 0);
+            document.getElementById("tollInfo").innerText = tollCost > 0 ? `Pedágio estimado: R$ ${tollCost.toFixed(2)}` : "Sem pedágios";
             window.calculatedToll = tollCost.toFixed(2);
           } catch(error){
             console.error("Erro no cálculo do pedágio:", error);
-            document.getElementById("tollInfo").innerText="Sem pedágios";
+            document.getElementById("tollInfo").innerText = "Sem pedágios";
           }
           updateReceipt();
         } else {
-          document.getElementById("resultado").innerText="Nenhuma rota encontrada.";
-          document.getElementById("tollInfo").innerText="Sem pedágios";
+          document.getElementById("resultado").innerText = "Nenhuma rota encontrada.";
+          document.getElementById("tollInfo").innerText = "Sem pedágios";
         }
       }, error=>{
         console.error("Erro ao calcular a rota:", error);
-        document.getElementById("resultado").innerText="Erro ao calcular a rota.";
-        document.getElementById("tollInfo").innerText="Sem pedágios";
+        document.getElementById("resultado").innerText = "Erro ao calcular a rota.";
+        document.getElementById("tollInfo").innerText = "Sem pedágios";
       });
     }
-
     function autoAdjustZoom(bBox){
-      for(let zoom=5; zoom<=15; zoom++){
+      for(let zoom = 5; zoom <= 15; zoom++){
         map.setZoom(zoom);
         const originScreen = map.geoToScreen(markerOrigin.getGeometry());
         const destScreen = map.geoToScreen(markerDestination.getGeometry());
         const w = document.getElementById("map").offsetWidth;
         const h = document.getElementById("map").offsetHeight;
-        if(originScreen.x>=0 && originScreen.x<=w && originScreen.y>=0 && originScreen.y<=h &&
-           destScreen.x>=0 && destScreen.x<=w && destScreen.y>=0 && destScreen.y<=h){
-          map.getViewModel().setLookAtData({ bounds: bBox, padding: { top:300, bottom:300, left:300, right:300 }, animation:false });
-          return;
+        if(originScreen.x >= 0 && originScreen.x <= w && originScreen.y >= 0 && originScreen.y <= h &&
+           destScreen.x >= 0 && destScreen.x <= w && destScreen.y >= 0 && destScreen.y <= h){
+             map.getViewModel().setLookAtData({ bounds: bBox, padding: { top:300, bottom:300, left:300, right:300 }, animation:false });
+             return;
         }
       }
       map.getViewModel().setLookAtData({ bounds: bBox, padding: { top:300, bottom:300, left:300, right:300 }, animation:false });
     }
-
     function updateReceipt(){
       document.getElementById("pOrigem").innerText = `Origem: ${window.originAddress || "Não disponível"}`;
       document.getElementById("pDestino").innerText = `Destino: ${window.destinationAddress || "Não disponível"}`;
@@ -261,8 +251,19 @@
       const tot = kmVal + parseFloat(window.calculatedToll || 0);
       document.getElementById("pTotal").innerText = `Total: R$ ${tot.toFixed(2)}`;
     }
-
     function prepararImpressao(){ updateReceipt(); window.print(); }
+    
+    function imprimirReciboPDF(){
+      var element = document.getElementById("receipt");
+      var opt = {
+        margin: 0.2,
+        filename: 'recibo_orbi.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: [6,12], orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(element).save();
+    }
   </script>
 </body>
 </html>
