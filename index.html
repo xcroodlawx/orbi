@@ -12,13 +12,13 @@
   <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
   <style>
-    html, body { margin: 0; padding: 0; overflow-x: hidden; font-family: Arial, sans-serif; background-color: #f5f5f5; color: #333; }
     @page { size: 6in 12in; margin: 0; }
     @media print { .no-print { display: none; } body { margin: 0; } }
+    html, body { margin: 0; padding: 0; overflow-x: hidden; font-family: Arial, sans-serif; background-color: #f5f5f5; color: #333; }
     header, footer { background-color: #2979ff; color: #fff; text-align: center; padding: 0.8rem 1rem; }
     header h1, footer p { margin: 0; }
     main { max-width: 800px; margin: 0 auto; padding: 1rem; }
-    #printContainer { background: #fff; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden; }
+    #printContainer { background: #fff; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     .calc-section { margin-bottom: 1rem; }
     .calc-section h2 { text-align: center; color: #2979ff; margin-bottom: 0.5rem; }
     .calc-section input, .calc-section button { width: 100%; padding: 0.6rem; margin: 0.4rem 0; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem; }
@@ -32,11 +32,7 @@
     #map { width: 100%; height: 400px; border: none; border-bottom: 1px solid #ccc; margin-bottom: 1rem; border-radius: 8px; overflow: hidden; }
     .imprimir-btn { background: #00e676; color: #fff; padding: 0.6rem; border: none; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 1rem; font-size: 1rem; }
     .imprimir-btn:hover { background: #00c853; }
-    @media (max-width:600px) {
-      main { padding: 0.5rem; }
-      #printContainer, #map { padding: 0.8rem; }
-      .calc-section input, .calc-section button, .imprimir-btn { font-size: 0.9rem; }
-    }
+    @media (max-width:600px) { main { padding: 0.5rem; } #printContainer, #map { padding: 0.8rem; } .calc-section input, .calc-section button, .imprimir-btn { font-size: 0.9rem; } }
   </style>
 </head>
 <body>
@@ -49,7 +45,7 @@
       <button onclick="calcularDistancia()">Calcular</button>
       <p id="resultado"></p>
       <p id="tollInfo"></p>
-      <button class="imprimir-btn no-print" onclick="prepararImpressao()">Imprimir PDF</button>
+      <button class="imprimir-btn no-print" onclick="imprimirReciboPDF()">Imprimir PDF</button>
     </section>
     <div id="receipt">
       <h2>Recibo de Viagem</h2>
@@ -74,19 +70,15 @@
     window.destinationAddress = "";
     window.encodedRoutePolyline = "";
     let mapGroup = null, markerOrigin = null, markerDestination = null;
-    
+    let routeOptions = [];
     document.getElementById("destino").addEventListener("input", function(){
       const q = this.value.trim();
       destinationCoords = null;
       if(q.length < 1){ document.getElementById("suggestions").innerHTML = ""; return; }
       fetchSuggestions(q);
     });
-    
     function fetchSuggestions(q){
-      if(!currentLocation){ 
-        getUserLocation().then(loc=>{ currentLocation = loc; fetchSuggestions(q); }); 
-        return; 
-      }
+      if(!currentLocation){ getUserLocation().then(loc=>{ currentLocation = loc; fetchSuggestions(q); }); return; }
       const url = `https://autosuggest.search.hereapi.com/v1/autosuggest?at=${currentLocation.lat},${currentLocation.lng}&q=${encodeURIComponent(q)}&apiKey=${apiKey}`;
       fetch(url).then(r=>r.json()).then(data=>{
         const sl = document.getElementById("suggestions");
@@ -108,7 +100,6 @@
         }
       }).catch(e=>console.error("Erro ao buscar sugestões:", e));
     }
-    
     function getUserLocation(){
       return new Promise((resolve)=>{
         if(navigator.geolocation){
@@ -119,13 +110,11 @@
         } else { resolve(fallbackLocation); }
       });
     }
-    
     function reverseGeocode(coords){
       const url = `https://revgeocode.search.hereapi.com/v1/revgeocode?at=${coords.lat},${coords.lng}&lang=pt-BR&apiKey=${apiKey}`;
       return fetch(url).then(r=>r.json()).then(data=> data.items && data.items.length > 0 ? data.items[0].address.label : "Endereço não encontrado")
       .catch(err=>{ console.error(err); return "Endereço não disponível"; });
     }
-    
     function initMap(lat, lng){
       const mc = document.getElementById("map");
       if(!mc)return;
@@ -140,17 +129,14 @@
       new H.mapevents.Behavior(mapEvents);
       H.ui.UI.createDefault(map, dl);
     }
-    
     function addOriginMarker(lat, lng){
       markerOrigin = new H.map.Marker({lat, lng}, {icon: new H.map.Icon('https://maps.gstatic.com/mapfiles/ms2/micons/red-dot.png')});
       mapGroup.addObject(markerOrigin);
     }
-    
     function addDestinationMarker(lat, lng){
       markerDestination = new H.map.Marker({lat, lng}, {icon: new H.map.Icon('https://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png')});
       mapGroup.addObject(markerDestination);
     }
-    
     function calcularDistancia(){
       getUserLocation().then(location=>{
         currentLocation = location;
@@ -168,7 +154,7 @@
           }
           fetch(`https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(destino)}&apiKey=${apiKey}`)
           .then(r=>r.json()).then(d=>{
-            if(d.items && d.items.length > 0){
+            if(d.items && d.items.length>0){
               const destLat = d.items[0].position.lat, destLng = d.items[0].position.lng;
               if(d.items[0].address && d.items[0].address.label){ window.destinationAddress = d.items[0].address.label; }
               processRoute(destLat, destLng);
@@ -184,7 +170,6 @@
         }
       });
     }
-    
     function processRoute(destLat, destLng){
       addDestinationMarker(destLat, destLng);
       window.destinationCoords = {lat: destLat, lng: destLng};
@@ -197,52 +182,8 @@
       };
       routingService.calculateRoute(params, result=>{
         if(result.routes && result.routes.length > 0){
-          const route = result.routes[0];
-          window.encodedRoutePolyline = route.sections[0].polyline;
-          let totalDist = 0;
-          const combinedLS = new H.geo.LineString();
-          combinedLS.pushPoint({lat: currentLocation.lat, lng: currentLocation.lng});
-          route.sections.forEach(section=>{
-            totalDist += (section.summary.length || section.summary.distance || 0);
-            const ls = H.geo.LineString.fromFlexiblePolyline(section.polyline);
-            const poly = new H.map.Polyline(ls, { style: { strokeColor: 'blue', lineWidth: 4 } });
-            mapGroup.addObject(poly);
-            const coords = ls.getLatLngAltArray();
-            for(let i = 0; i < coords.length; i += 3){ 
-              combinedLS.pushLatLngAlt(coords[i], coords[i+1], 0); 
-            }
-          });
-          combinedLS.pushPoint({lat: destLat, lng: destLng});
-          totalDist = totalDist / 1000;
-          document.getElementById("resultado").innerText = `Distância: ${totalDist.toFixed(2)} km`;
-          window.calculatedDistance = totalDist.toFixed(2);
-          map.getViewPort().resize();
-          setTimeout(()=>{
-            const bBox = combinedLS.getBoundingBox();
-            map.getViewModel().setLookAtData({ bounds: bBox, padding: { top:300, bottom:300, left:300, right:300 }, animation:false });
-          },1500);
-          try{
-            const tollCost = route.sections.reduce((total, section)=>{
-              if(section.tolls && section.tolls.length > 0){
-                const sectionToll = section.tolls.reduce((subTotal, toll)=>{
-                  if(toll.fares && toll.fares.length > 0){
-                    const sum = toll.fares.reduce((fareSum, fare)=> fareSum + (fare.price && typeof fare.price.value==='number' ? fare.price.value : 0), 0);
-                    return subTotal + sum;
-                  }
-                  return subTotal;
-                },0);
-                return total + sectionToll;
-              }
-              return total;
-            },0);
-            document.getElementById("tollInfo").innerText = tollCost > 0 ? `Pedágio estimado: R$ ${tollCost.toFixed(2)}` : "Sem pedágios";
-            window.calculatedToll = tollCost.toFixed(2);
-          } catch(error){
-            console.error("Erro no cálculo do pedágio:", error);
-            document.getElementById("tollInfo").innerText = "Sem pedágios";
-          }
-          updateReceipt();
-          restoreMapInteractivity();
+          routeOptions = result.routes.slice(0,2);
+          drawRouteOptions(routeOptions);
         } else {
           document.getElementById("resultado").innerText = "Nenhuma rota encontrada.";
           document.getElementById("tollInfo").innerText = "Sem pedágios";
@@ -253,13 +194,77 @@
         document.getElementById("tollInfo").innerText = "Sem pedágios";
       });
     }
-    
+    function drawRouteOptions(routes){
+      // Limpa rotas anteriores
+      mapGroup.getObjects().forEach(obj => { if(obj instanceof H.map.Polyline && obj !== markerOrigin && obj !== markerDestination) { mapGroup.removeObject(obj); } });
+      routes.forEach((route, index) => {
+        const ls = H.geo.LineString.fromFlexiblePolyline(route.sections[0].polyline);
+        const style = { strokeColor: index===0 ? 'blue' : 'green', lineWidth: 4 };
+        const poly = new H.map.Polyline(ls, { style: style });
+        poly.routeData = route; // Armazena os dados da rota
+        poly.addEventListener("tap", function(){
+          selectRoute(poly);
+        });
+        mapGroup.addObject(poly);
+      });
+      // Auto zoom baseado na primeira rota
+      let combinedLS = new H.geo.LineString();
+      combinedLS.pushPoint({lat: currentLocation.lat, lng: currentLocation.lng});
+      routes.forEach(route=>{
+        const ls = H.geo.LineString.fromFlexiblePolyline(route.sections[0].polyline);
+        const coords = ls.getLatLngAltArray();
+        for(let i=0; i<coords.length; i+=3){
+          combinedLS.pushLatLngAlt(coords[i], coords[i+1], 0);
+        }
+      });
+      combinedLS.pushPoint({lat: destinationCoords.lat, lng: destinationCoords.lng});
+      setTimeout(()=>{
+        const bBox = combinedLS.getBoundingBox();
+        map.getViewModel().setLookAtData({ bounds: bBox, padding: { top:300, bottom:300, left:300, right:300 }, animation:false });
+      },1500);
+    }
+    function selectRoute(polyline){
+      // Destaca a rota selecionada e atualiza os dados do recibo
+      mapGroup.getObjects().forEach(obj => {
+        if(obj instanceof H.map.Polyline){
+          obj.setStyle({ strokeColor: obj === polyline ? 'red' : (obj.style.strokeColor === 'red' ? 'blue' : obj.style.strokeColor), lineWidth: obj === polyline ? 8 : 4 });
+        }
+      });
+      const route = polyline.routeData;
+      let totalDist = 0;
+      route.sections.forEach(section=>{
+        totalDist += (section.summary.length || section.summary.distance || 0);
+      });
+      totalDist = totalDist / 1000;
+      document.getElementById("resultado").innerText = `Distância: ${totalDist.toFixed(2)} km`;
+      window.calculatedDistance = totalDist.toFixed(2);
+      try{
+        const tollCost = route.sections.reduce((total, section)=>{
+          if(section.tolls && section.tolls.length > 0){
+            const sectionToll = section.tolls.reduce((subTotal, toll)=>{
+              if(toll.fares && toll.fares.length > 0){
+                const sum = toll.fares.reduce((fareSum, fare)=> fareSum + (fare.price && typeof fare.price.value==='number'?fare.price.value:0), 0);
+                return subTotal + sum;
+              }
+              return subTotal;
+            },0);
+            return total + sectionToll;
+          }
+          return total;
+        },0);
+        document.getElementById("tollInfo").innerText = tollCost > 0 ? `Pedágio estimado: R$ ${tollCost.toFixed(2)}` : "Sem pedágios";
+        window.calculatedToll = tollCost.toFixed(2);
+      } catch(error){
+        console.error("Erro no cálculo do pedágio:", error);
+        document.getElementById("tollInfo").innerText = "Sem pedágios";
+      }
+      updateReceipt();
+    }
     function restoreMapInteractivity(){
       var mapEvents = new H.mapevents.MapEvents(map);
       new H.mapevents.Behavior(mapEvents);
       H.ui.UI.createDefault(map, platform.createDefaultLayers());
     }
-    
     function updateReceipt(){
       document.getElementById("pOrigem").innerText = `Origem: ${window.originAddress || "Não disponível"}`;
       document.getElementById("pDestino").innerText = `Destino: ${window.destinationAddress || "Não disponível"}`;
@@ -270,9 +275,7 @@
       const tot = kmVal + parseFloat(window.calculatedToll || 0);
       document.getElementById("pTotal").innerText = `Total: R$ ${tot.toFixed(2)}`;
     }
-    
     function prepararImpressao(){ updateReceipt(); window.print(); }
-    
     function imprimirReciboPDF(){
       var element = document.getElementById("printContainer");
       var opt = {
