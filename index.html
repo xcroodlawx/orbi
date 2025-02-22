@@ -27,18 +27,14 @@
     #suggestions { list-style: none; padding: 0.5rem; border: 1px solid #ccc; border-radius: 8px; background: #fff; max-height: 150px; overflow-y: auto; }
     #suggestions li { padding: 0.5rem; cursor: pointer; }
     #suggestions li:hover { background-color: #e0e0e0; }
-    #routeButtons { margin-bottom: 1rem; text-align: center; }
-    #routeButtons button { margin: 0 5px; padding: 0.5rem 1rem; border: none; border-radius: 8px; cursor: pointer; background: #00e676; color: #fff; }
+    #routeButtons { margin: 10px 0; text-align: center; }
+    #routeButtons button { margin: 0 5px; padding: 0.5rem 1rem; border: none; border-radius: 8px; cursor: pointer; color: #fff; }
     #receipt { padding: 1rem; border-bottom: 1px solid #ccc; margin-bottom: 1rem; background: #fff; border-radius: 8px; }
     #receipt h2 { color: #2979ff; margin-bottom: 0.5rem; }
     #map { width: 100%; height: 400px; border: none; border-bottom: 1px solid #ccc; margin-bottom: 1rem; border-radius: 8px; overflow: hidden; }
     .imprimir-btn { background: #00e676; color: #fff; padding: 0.6rem; border: none; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 1rem; font-size: 1rem; }
     .imprimir-btn:hover { background: #00c853; }
-    @media (max-width:600px) {
-      main { padding: 0.5rem; }
-      #printContainer, #map { padding: 0.8rem; }
-      .calc-section input, .calc-section button, .imprimir-btn { font-size: 0.9rem; }
-    }
+    @media (max-width:600px) { main { padding: 0.5rem; } #printContainer, #map { padding: 0.8rem; } .calc-section input, .calc-section button, .imprimir-btn { font-size: 0.9rem; } }
   </style>
 </head>
 <body>
@@ -87,14 +83,12 @@
     });
     
     function fetchSuggestions(q){
-      if(!currentLocation){
-        getUserLocation().then(loc => { currentLocation = loc; fetchSuggestions(q); });
-        return;
+      if(!currentLocation){ 
+        getUserLocation().then(loc => { currentLocation = loc; fetchSuggestions(q); }); 
+        return; 
       }
       const url = `https://autosuggest.search.hereapi.com/v1/autosuggest?at=${currentLocation.lat},${currentLocation.lng}&q=${encodeURIComponent(q)}&apiKey=${apiKey}`;
-      fetch(url)
-      .then(r => r.json())
-      .then(data => {
+      fetch(url).then(r => r.json()).then(data => {
         const sl = document.getElementById("suggestions");
         sl.innerHTML = "";
         if(data.items && data.items.length > 0){
@@ -102,7 +96,7 @@
             if(item.position){
               let li = document.createElement("li");
               li.textContent = item.title + (item.address && item.address.label ? " - " + item.address.label : "");
-              li.addEventListener("click", ()=>{
+              li.addEventListener("click", () => {
                 document.getElementById("destino").value = item.title;
                 destinationCoords = { lat: item.position.lat, lng: item.position.lng };
                 if(item.address && item.address.label){ window.destinationAddress = item.address.label; }
@@ -112,8 +106,7 @@
             }
           });
         }
-      })
-      .catch(e => console.error("Erro ao buscar sugestões:", e));
+      }).catch(e => console.error("Erro ao buscar sugestões:", e));
     }
     
     function getUserLocation(){
@@ -129,9 +122,7 @@
     
     function reverseGeocode(coords){
       const url = `https://revgeocode.search.hereapi.com/v1/revgeocode?at=${coords.lat},${coords.lng}&lang=pt-BR&apiKey=${apiKey}`;
-      return fetch(url)
-      .then(r => r.json())
-      .then(data => data.items && data.items.length > 0 ? data.items[0].address.label : "Endereço não encontrado")
+      return fetch(url).then(r => r.json()).then(data => data.items && data.items.length > 0 ? data.items[0].address.label : "Endereço não encontrado")
       .catch(err => { console.error(err); return "Endereço não disponível"; });
     }
     
@@ -176,8 +167,7 @@
             return;
           }
           fetch(`https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(destino)}&apiKey=${apiKey}`)
-          .then(r => r.json())
-          .then(d => {
+          .then(r => r.json()).then(d => {
             if(d.items && d.items.length > 0){
               const destLat = d.items[0].position.lat, destLng = d.items[0].position.lng;
               if(d.items[0].address && d.items[0].address.label){ window.destinationAddress = d.items[0].address.label; }
@@ -208,9 +198,9 @@
       };
       routingService.calculateRoute(params, result => {
         if(result.routes && result.routes.length > 0){
-          routeOptions = result.routes;
+          routeOptions = result.routes.slice(0,2);
           displayRouteButtons(routeOptions);
-          // Seleciona a primeira rota por padrão
+          // Seleciona a rota principal por padrão
           selectRouteOption(0);
         } else {
           document.getElementById("resultado").innerText = "Nenhuma rota encontrada.";
@@ -224,17 +214,17 @@
     }
     
     function displayRouteButtons(routes){
-      const container = document.getElementById("routeButtons");
+      let container = document.getElementById("routeButtons");
       if(!container){
-        let div = document.createElement("div");
-        div.id = "routeButtons";
-        document.querySelector(".calc-section").appendChild(div);
-        container = div;
+        container = document.createElement("div");
+        container.id = "routeButtons";
+        document.querySelector(".calc-section").appendChild(container);
       }
       container.innerHTML = "";
       routes.forEach((route, index) => {
         let btn = document.createElement("button");
         btn.textContent = index === 0 ? "Rota Principal" : "Rota Alternativa";
+        btn.style.backgroundColor = index === 0 ? "#007bff" : "#28a745";
         btn.style.margin = "0 5px";
         btn.addEventListener("click", () => { selectRouteOption(index); });
         container.appendChild(btn);
@@ -242,38 +232,34 @@
     }
     
     function selectRouteOption(index){
-      // Limpa rotas anteriores (polyline) do grupo
-      mapGroup.getObjects().forEach(obj => {
-        if(obj instanceof H.map.Polyline && obj !== markerOrigin && obj !== markerDestination){
-          mapGroup.removeObject(obj);
+      mapGroup.getObjects().forEach(obj => { 
+        if(obj instanceof H.map.Polyline && obj !== markerOrigin && obj !== markerDestination){ 
+          mapGroup.removeObject(obj); 
         }
       });
       const route = routeOptions[index];
       const ls = H.geo.LineString.fromFlexiblePolyline(route.sections[0].polyline);
-      const poly = new H.map.Polyline(ls, { style: { strokeColor: 'red', lineWidth: 8 } });
+      const poly = new H.map.Polyline(ls, { style: { strokeColor: "black", lineWidth: 8 } });
       mapGroup.addObject(poly);
-      // Atualiza o recibo com distância e pedágio
       let totalDist = 0;
-      route.sections.forEach(section => {
-        totalDist += (section.summary.length || section.summary.distance || 0);
-      });
+      route.sections.forEach(section => { totalDist += (section.summary.length || section.summary.distance || 0); });
       totalDist = totalDist / 1000;
       document.getElementById("resultado").innerText = `Distância: ${totalDist.toFixed(2)} km`;
       window.calculatedDistance = isNaN(totalDist) ? "0.00" : totalDist.toFixed(2);
       try{
-        const tollCost = route.sections.reduce((total, section)=>{
+        const tollCost = route.sections.reduce((total, section) => {
           if(section.tolls && section.tolls.length > 0){
-            const sectionToll = section.tolls.reduce((subTotal, toll)=>{
+            const sectionToll = section.tolls.reduce((subTotal, toll) => {
               if(toll.fares && toll.fares.length > 0){
-                const sum = toll.fares.reduce((fareSum, fare)=> fareSum + (fare.price && typeof fare.price.value==='number'?fare.price.value:0), 0);
+                const sum = toll.fares.reduce((fareSum, fare) => fareSum + (fare.price && typeof fare.price.value === "number" ? fare.price.value : 0), 0);
                 return subTotal + sum;
               }
               return subTotal;
-            },0);
+            }, 0);
             return total + sectionToll;
           }
           return total;
-        },0) || 0;
+        }, 0) || 0;
         document.getElementById("tollInfo").innerText = tollCost > 0 ? `Pedágio estimado: R$ ${tollCost.toFixed(2)}` : "Sem pedágios";
         window.calculatedToll = tollCost.toFixed(2);
       } catch(error){
@@ -311,15 +297,15 @@
         html2canvas: { useCORS: true, allowTaint: false, scale: 2 },
         jsPDF: { unit: 'in', format: [6,12], orientation: 'portrait' }
       };
-      html2pdf().set(opt).from(element).save().then(()=>{ restoreMapInteractivity(); });
+      html2pdf().set(opt).from(element).save().then(() => { restoreMapInteractivity(); });
     }
     
     window.onload = function(){
-      getUserLocation().then(location=>{
+      getUserLocation().then(location => {
         currentLocation = location;
         initMap(location.lat, location.lng);
         addOriginMarker(location.lat, location.lng);
-        reverseGeocode(location).then(addr=>{ window.originAddress = addr; updateReceipt(); });
+        reverseGeocode(location).then(addr => { window.originAddress = addr; updateReceipt(); });
       });
     }
   </script>
