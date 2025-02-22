@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="Permissions-Policy" content="geolocation=(self)" />
+  <meta charset="UTF-8"/>
+  <meta http-equiv="Permissions-Policy" content="geolocation=(self)"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Orbi - Calculadora de Distância com Pedágio</title>
-  <link rel="stylesheet" type="text/css" href="https://js.api.here.com/v3/3.1/mapsjs-ui.css" />
+  <link rel="stylesheet" type="text/css" href="https://js.api.here.com/v3/3.1/mapsjs-ui.css"/>
   <script src="https://js.api.here.com/v3/3.1/mapsjs-core.js"></script>
   <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js"></script>
   <script src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"></script>
@@ -32,17 +32,13 @@
     .imprimir-btn { background: #00e676; color: #fff; padding: 0.6rem; border: none; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 1rem; font-size: 1rem; }
     .imprimir-btn:hover { background: #00c853; }
     .no-print { display: block; }
-    @media print {
-      .no-print { display: none; }
-      .pdf-map { display: block; }
-      #map { display: none; }
-      body { margin: 0; }
+    @media print { 
+      .no-print { display: none; } 
+      .pdf-map { display: block; } 
+      #map { display: none; } 
+      body { margin: 0; } 
     }
-    @media (max-width:600px) {
-      main { padding: 0.5rem; }
-      .calc-section, #receipt, #map, .pdf-map { padding: 0.8rem; }
-      .calc-section input, .calc-section button, .imprimir-btn { font-size: 0.9rem; }
-    }
+    @media (max-width:600px) { main { padding: 0.5rem; } .calc-section, #receipt, #map, .pdf-map { padding: 0.8rem; } .calc-section input, .calc-section button, .imprimir-btn { font-size: 0.9rem; } }
   </style>
 </head>
 <body>
@@ -84,7 +80,7 @@
     document.getElementById("destino").addEventListener("input", function(){
       const q = this.value.trim();
       destinationCoords = null;
-      if(q.length < 1){ document.getElementById("suggestions").innerHTML = ""; return; }
+      if(q.length < 1){ document.getElementById("suggestions").innerHTML=""; return; }
       fetchSuggestions(q);
     });
     function fetchSuggestions(q){
@@ -135,8 +131,10 @@
       map = new H.Map(mc, dl.vector.normal.map, { center: {lat, lng}, zoom: 14 });
       mapGroup = new H.map.Group();
       map.addObject(mapGroup);
-      const ui = H.ui.UI.createDefault(map, dl);
-      ui.removeControl("zoom");
+      // Não removemos os controles para manter a interatividade padrão
+      var mapEvents = new H.mapevents.MapEvents(map);
+      new H.mapevents.Behavior(mapEvents);
+      H.ui.UI.createDefault(map, dl);
     }
     function addOriginMarker(lat, lng){
       markerOrigin = new H.map.Marker({lat, lng}, {icon: new H.map.Icon('https://maps.gstatic.com/mapfiles/ms2/micons/red-dot.png')});
@@ -162,7 +160,7 @@
           }
           fetch(`https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(destino)}&apiKey=${apiKey}`)
           .then(r=>r.json()).then(d=>{
-            if(d.items && d.items.length>0){
+            if(d.items && d.items.length > 0){
               const destLat = d.items[0].position.lat, destLng = d.items[0].position.lng;
               if(d.items[0].address && d.items[0].address.label){ window.destinationAddress = d.items[0].address.label; }
               processRoute(destLat, destLng);
@@ -189,7 +187,7 @@
         return: 'summary,polyline,travelSummary,tolls'
       };
       routingService.calculateRoute(params, result=>{
-        if(result.routes && result.routes.length>0){
+        if(result.routes && result.routes.length > 0){
           const route = result.routes[0];
           window.encodedRoutePolyline = route.sections[0].polyline;
           let totalDist = 0;
@@ -216,9 +214,9 @@
           },1500);
           try{
             const tollCost = route.sections.reduce((total, section)=>{
-              if(section.tolls && section.tolls.length>0){
+              if(section.tolls && section.tolls.length > 0){
                 const sectionToll = section.tolls.reduce((subTotal, toll)=>{
-                  if(toll.fares && toll.fares.length>0){
+                  if(toll.fares && toll.fares.length > 0){
                     const sum = toll.fares.reduce((fareSum, fare)=> fareSum + (fare.price && typeof fare.price.value==='number'?fare.price.value:0), 0);
                     return subTotal + sum;
                   }
@@ -228,14 +226,14 @@
               }
               return total;
             },0);
-            document.getElementById("tollInfo").innerText = tollCost>0 ? `Pedágio estimado: R$ ${tollCost.toFixed(2)}` : "Sem pedágios";
+            document.getElementById("tollInfo").innerText = tollCost > 0 ? `Pedágio estimado: R$ ${tollCost.toFixed(2)}` : "Sem pedágios";
             window.calculatedToll = tollCost.toFixed(2);
           } catch(error){
             console.error("Erro no cálculo do pedágio:", error);
             document.getElementById("tollInfo").innerText = "Sem pedágios";
           }
           updateReceipt();
-          resetMap();
+          restoreMapInteractivity();
         } else {
           document.getElementById("resultado").innerText = "Nenhuma rota encontrada.";
           document.getElementById("tollInfo").innerText = "Sem pedágios";
@@ -266,8 +264,10 @@
       const tot = kmVal + parseFloat(window.calculatedToll || 0);
       document.getElementById("pTotal").innerText = `Total: R$ ${tot.toFixed(2)}`;
     }
-    function resetMap(){
-      if(map) { initMap(currentLocation.lat, currentLocation.lng); addOriginMarker(currentLocation.lat, currentLocation.lng); }
+    function restoreMapInteractivity(){
+      var mapEvents = new H.mapevents.MapEvents(map);
+      new H.mapevents.Behavior(mapEvents);
+      H.ui.UI.createDefault(map, platform.createDefaultLayers());
     }
     function prepararImpressao(){ updateReceipt(); window.print(); }
     function imprimirReciboPDF(){
@@ -279,7 +279,7 @@
         html2canvas: { scale: 2 },
         jsPDF: { unit: 'in', format: [6,12], orientation: 'portrait' }
       };
-      html2pdf().set(opt).from(element).save().then(()=>{ resetMap(); });
+      html2pdf().set(opt).from(element).save().then(()=>{ restoreMapInteractivity(); });
     }
   </script>
 </body>
