@@ -25,6 +25,11 @@
       min-height: 100vh;
       overflow-x: hidden;
     }
+    /* Esconde os cards de sugestões se estiverem vazios */
+    #suggestions:empty,
+    #originSuggestions:empty {
+      display: none;
+    }
     @page { size: 6in 12in; margin: 0; }
     @media print { 
       .no-print { display: none; } 
