@@ -12,33 +12,141 @@
   <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
   <style>
-    html, body { margin: 0; padding: 0; overflow-x: hidden; font-family: Arial, sans-serif; background-color: #f5f5f5; color: #333; }
+    /* Reset e box-sizing */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body { 
+      font-family: Arial, sans-serif; 
+      background: linear-gradient(135deg, #d986a2, #f7c9d1);
+      color: #333; 
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
     @page { size: 6in 12in; margin: 0; }
-    @media print { .no-print { display: none; } body { margin: 0; } }
-    header, footer { background-color: #2979ff; color: #fff; text-align: center; padding: 0.8rem 1rem; }
+    @media print { 
+      .no-print { display: none; } 
+      body { margin: 0; } 
+    }
+    header, footer { 
+      background-color: #2979ff; 
+      color: #fff; 
+      text-align: center; 
+      padding: 0.8rem 1rem; 
+    }
     header h1, footer p { margin: 0; }
-    main { max-width: 800px; margin: 0 auto; padding: 1rem; }
-    #printContainer { background: #fff; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .calc-section { margin-bottom: 1rem; }
-    .calc-section h2 { text-align: center; color: #2979ff; margin-bottom: 0.5rem; }
-    .calc-section input, .calc-section button { width: 100%; padding: 0.6rem; margin: 0.4rem 0; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem; }
-    .calc-section button { background: #ff4081; color: #fff; border: none; cursor: pointer; transition: background 0.2s; }
-    .calc-section button:hover { background: #f50057; }
-    #suggestions, #originSuggestions { list-style: none; padding: 0.5rem; border: 1px solid #ccc; border-radius: 8px; background: #fff; max-height: 150px; overflow-y: auto; }
-    #suggestions li, #originSuggestions li { padding: 0.5rem; cursor: pointer; }
-    #suggestions li:hover, #originSuggestions li:hover { background-color: #e0e0e0; }
-    #routeButtons { margin: 10px 0; text-align: center; }
-    #routeButtons button { margin: 0 5px; padding: 0.5rem 1rem; border: none; border-radius: 8px; cursor: pointer; color: #fff; }
-    #receipt { padding: 1rem; border-bottom: 1px solid #ccc; margin-bottom: 1rem; background: #fff; border-radius: 8px; }
-    #receipt h2 { color: #2979ff; margin-bottom: 0.5rem; }
-    #map { width: 100%; height: 400px; border: none; border-bottom: 1px solid #ccc; margin-bottom: 1rem; border-radius: 8px; overflow: hidden; }
-    .imprimir-btn { background: #00e676; color: #fff; padding: 0.6rem; border: none; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 1rem; font-size: 1rem; }
-    .imprimir-btn:hover { background: #00c853; }
-    @media (max-width:600px) { main { padding: 0.5rem; } #printContainer, #map { padding: 0.8rem; } .calc-section input, .calc-section button, .imprimir-btn { font-size: 0.9rem; } }
+    main { 
+      max-width: 500px; /* Layout slim */
+      margin: 20px auto;
+      padding: 1rem;
+    }
+    #printContainer { 
+      background: #fff; 
+      padding: 1rem; 
+      border-radius: 8px; 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .calc-section { 
+      margin-bottom: 1rem; 
+    }
+    .calc-section h2 { 
+      text-align: center; 
+      color: #2979ff; 
+      margin-bottom: 0.5rem; 
+    }
+    .calc-section input, .calc-section button { 
+      width: 100%; 
+      padding: 0.6rem; 
+      margin: 0.4rem 0; 
+      border: 1px solid #ccc; 
+      border-radius: 8px; 
+      font-size: 1rem; 
+    }
+    .calc-section button { 
+      background: #ff4081; 
+      color: #fff; 
+      border: none; 
+      cursor: pointer; 
+      transition: background 0.2s; 
+    }
+    .calc-section button:hover { 
+      background: #f50057; 
+    }
+    #suggestions, #originSuggestions { 
+      list-style: none; 
+      padding: 0.5rem; 
+      border: 1px solid #ccc; 
+      border-radius: 8px; 
+      background: #fff; 
+      max-height: 150px; 
+      overflow-y: auto; 
+    }
+    #suggestions li, #originSuggestions li { 
+      padding: 0.5rem; 
+      cursor: pointer; 
+    }
+    #suggestions li:hover, #originSuggestions li:hover { 
+      background-color: #e0e0e0; 
+    }
+    #routeButtons { 
+      margin: 10px 0; 
+      text-align: center; 
+    }
+    #routeButtons button { 
+      margin: 0 5px; 
+      padding: 0.5rem 1rem; 
+      border: none; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      color: #fff; 
+    }
+    #receipt { 
+      padding: 1rem; 
+      border-bottom: 1px solid #ccc; 
+      margin-bottom: 1rem; 
+      background: #fff; 
+      border-radius: 8px; 
+    }
+    #receipt h2 { 
+      color: #2979ff; 
+      margin-bottom: 0.5rem; 
+    }
+    #map { 
+      width: 100%; 
+      height: 400px; 
+      border: none; 
+      border-bottom: 1px solid #ccc; 
+      margin-bottom: 1rem; 
+      border-radius: 8px; 
+      overflow: hidden; 
+    }
+    .imprimir-btn { 
+      background: #00e676; 
+      color: #fff; 
+      padding: 0.6rem; 
+      border: none; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      width: 100%; 
+      margin-top: 1rem; 
+      font-size: 1rem; 
+    }
+    .imprimir-btn:hover { 
+      background: #00c853; 
+    }
+    @media (max-width:600px) { 
+      main { padding: 0.5rem; } 
+      #printContainer, #map { padding: 0.8rem; } 
+      .calc-section input, .calc-section button, .imprimir-btn { font-size: 0.9rem; } 
+    }
   </style>
 </head>
 <body>
-  <header class="no-print"><h1>Orbi</h1></header>
+  <header class="no-print">
+    <h1>Orbi</h1>
+  </header>
   <main id="printContainer">
     <section class="calc-section no-print">
       <h2>Calculadora de Distância com Pedágio</h2>
@@ -65,7 +173,9 @@
     <div id="map"></div>
     <div id="routeButtons"></div>
   </main>
-  <footer class="no-print"><p>&copy; 2025 Orbi. Todos os direitos reservados.</p></footer>
+  <footer class="no-print">
+    <p>&copy; 2025 Orbi. Todos os direitos reservados.</p>
+  </footer>
   <script>
     const apiKey = "o2UlrzSQyEyGz0GG8MLHBFVyQrERHJiLzV0JqRtyexg";
     let map = null, platform;
@@ -191,7 +301,7 @@
       mapGroup.addObject(markerDestination);
     }
     
-    // Agora a função utiliza a origem escolhida ou, se não informada, a geolocalização.
+    // Função que utiliza a origem escolhida ou, se não informada, a geolocalização.
     function calcularDistancia(){
       const origemInput = document.getElementById("origem").value.trim();
       const destinoInput = document.getElementById("destino").value.trim();
@@ -244,7 +354,7 @@
       });
     }
     
-    // Agora a rota é calculada utilizando as coordenadas de origem e destino fornecidas.
+    // Rota calculada com as coordenadas de origem e destino
     function processRoute(origin, dest){
       addDestinationMarker(dest.lat, dest.lng);
       window.destinationCoords = { lat: dest.lat, lng: dest.lng };
