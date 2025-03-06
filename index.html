@@ -24,9 +24,9 @@
     .calc-section input, .calc-section button { width: 100%; padding: 0.6rem; margin: 0.4rem 0; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem; }
     .calc-section button { background: #ff4081; color: #fff; border: none; cursor: pointer; transition: background 0.2s; }
     .calc-section button:hover { background: #f50057; }
-    #suggestions { list-style: none; padding: 0.5rem; border: 1px solid #ccc; border-radius: 8px; background: #fff; max-height: 150px; overflow-y: auto; }
-    #suggestions li { padding: 0.5rem; cursor: pointer; }
-    #suggestions li:hover { background-color: #e0e0e0; }
+    #suggestions, #originSuggestions { list-style: none; padding: 0.5rem; border: 1px solid #ccc; border-radius: 8px; background: #fff; max-height: 150px; overflow-y: auto; }
+    #suggestions li, #originSuggestions li { padding: 0.5rem; cursor: pointer; }
+    #suggestions li:hover, #originSuggestions li:hover { background-color: #e0e0e0; }
     #routeButtons { margin: 10px 0; text-align: center; }
     #routeButtons button { margin: 0 5px; padding: 0.5rem 1rem; border: none; border-radius: 8px; cursor: pointer; color: #fff; }
     #receipt { padding: 1rem; border-bottom: 1px solid #ccc; margin-bottom: 1rem; background: #fff; border-radius: 8px; }
@@ -42,7 +42,11 @@
   <main id="printContainer">
     <section class="calc-section no-print">
       <h2>Calculadora de Distância com Pedágio</h2>
-      <input type="text" id="destino" placeholder="Digite o nome do local" autocomplete="off">
+      <!-- Campo de Origem -->
+      <input type="text" id="origem" placeholder="Seu local" autocomplete="off">
+      <ul id="originSuggestions"></ul>
+      <!-- Campo de Destino -->
+      <input type="text" id="destino" placeholder="Digite o nome do local de destino" autocomplete="off">
       <ul id="suggestions"></ul>
       <button onclick="calcularDistancia()">Calcular</button>
       <p id="resultado"></p>
@@ -65,7 +69,7 @@
   <script>
     const apiKey = "o2UlrzSQyEyGz0GG8MLHBFVyQrERHJiLzV0JqRtyexg";
     let map = null, platform;
-    let currentLocation = null, destinationCoords = null;
+    let currentLocation = null, destinationCoords = null, originCoords = null;
     const fallbackLocation = { lat: -23.550520, lng: -46.633308 };
     window.calculatedDistance = "";
     window.calculatedToll = "";
@@ -75,11 +79,20 @@
     let mapGroup = null, markerOrigin = null, markerDestination = null;
     let routeOptions = [];
     
+    // Sugestões para o destino
     document.getElementById("destino").addEventListener("input", function(){
       const q = this.value.trim();
       destinationCoords = null;
       if(q.length < 1){ document.getElementById("suggestions").innerHTML = ""; return; }
       fetchSuggestions(q);
+    });
+    
+    // Sugestões para a origem
+    document.getElementById("origem").addEventListener("input", function(){
+      const q = this.value.trim();
+      originCoords = null;
+      if(q.length < 1){ document.getElementById("originSuggestions").innerHTML = ""; return; }
+      fetchOriginSuggestions(q);
     });
     
     function fetchSuggestions(q){
@@ -107,6 +120,33 @@
           });
         }
       }).catch(e => console.error("Erro ao buscar sugestões:", e));
+    }
+    
+    function fetchOriginSuggestions(q) {
+      if(!currentLocation){ 
+        getUserLocation().then(loc => { currentLocation = loc; fetchOriginSuggestions(q); }); 
+        return; 
+      }
+      const url = `https://autosuggest.search.hereapi.com/v1/autosuggest?at=${currentLocation.lat},${currentLocation.lng}&q=${encodeURIComponent(q)}&apiKey=${apiKey}`;
+      fetch(url).then(r => r.json()).then(data => {
+        const ul = document.getElementById("originSuggestions");
+        ul.innerHTML = "";
+        if(data.items && data.items.length > 0){
+          data.items.forEach(item => {
+            if(item.position){
+              let li = document.createElement("li");
+              li.textContent = item.title + (item.address && item.address.label ? " - " + item.address.label : "");
+              li.addEventListener("click", () => {
+                document.getElementById("origem").value = item.title;
+                originCoords = { lat: item.position.lat, lng: item.position.lng };
+                if(item.address && item.address.label){ window.originAddress = item.address.label; }
+                ul.innerHTML = "";
+              });
+              ul.appendChild(li);
+            }
+          });
+        }
+      }).catch(e => console.error("Erro ao buscar sugestões de origem:", e));
     }
     
     function getUserLocation(){
@@ -151,48 +191,68 @@
       mapGroup.addObject(markerDestination);
     }
     
+    // Agora a função utiliza a origem escolhida ou, se não informada, a geolocalização.
     function calcularDistancia(){
-      getUserLocation().then(location => {
-        currentLocation = location;
-        initMap(location.lat, location.lng);
-        addOriginMarker(location.lat, location.lng);
-        reverseGeocode(location).then(addr => { window.originAddress = addr; updateReceipt(); });
-        if(destinationCoords){
-          processRoute(destinationCoords.lat, destinationCoords.lng);
-        } else {
-          const destino = document.getElementById("destino").value;
-          if(!destino.trim()){
-            document.getElementById("resultado").innerText = "Por favor, insira um destino.";
-            document.getElementById("tollInfo").innerText = "";
-            return;
-          }
-          fetch(`https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(destino)}&apiKey=${apiKey}`)
-          .then(r => r.json()).then(d => {
+      const origemInput = document.getElementById("origem").value.trim();
+      const destinoInput = document.getElementById("destino").value.trim();
+      
+      let originPromise;
+      if(origemInput && !originCoords){
+        // Se o usuário digitou algo e não selecionou sugestão, tenta geocodificar
+        originPromise = fetch(`https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(origemInput)}&apiKey=${apiKey}`)
+          .then(r => r.json())
+          .then(d => {
             if(d.items && d.items.length > 0){
-              const destLat = d.items[0].position.lat, destLng = d.items[0].position.lng;
-              if(d.items[0].address && d.items[0].address.label){ window.destinationAddress = d.items[0].address.label; }
-              processRoute(destLat, destLng);
-            } else {
-              document.getElementById("resultado").innerText = "Destino não encontrado.";
-              document.getElementById("tollInfo").innerText = "Sem pedágios";
-            }
-          }).catch(e => {
-            console.error("Erro:", e);
-            document.getElementById("resultado").innerText = "Erro ao buscar coordenadas.";
-            document.getElementById("tollInfo").innerText = "Sem pedágios";
+              if(d.items[0].address && d.items[0].address.label){ window.originAddress = d.items[0].address.label; }
+              return d.items[0].position;
+            } else { throw new Error("Origem não encontrada."); }
           });
-        }
+      } else if(originCoords){
+        originPromise = Promise.resolve(originCoords);
+      } else {
+        // Se o campo estiver vazio, usa a geolocalização
+        originPromise = getUserLocation();
+      }
+      
+      let destinationPromise;
+      if(destinoInput && !destinationCoords){
+        destinationPromise = fetch(`https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(destinoInput)}&apiKey=${apiKey}`)
+          .then(r => r.json())
+          .then(d => {
+            if(d.items && d.items.length > 0){
+              if(d.items[0].address && d.items[0].address.label){ window.destinationAddress = d.items[0].address.label; }
+              return d.items[0].position;
+            } else { throw new Error("Destino não encontrado."); }
+          });
+      } else if(destinationCoords){
+        destinationPromise = Promise.resolve(destinationCoords);
+      } else {
+        document.getElementById("resultado").innerText = "Por favor, insira um destino.";
+        document.getElementById("tollInfo").innerText = "";
+        return;
+      }
+      
+      Promise.all([originPromise, destinationPromise]).then(([origin, dest]) => {
+        initMap(origin.lat, origin.lng);
+        addOriginMarker(origin.lat, origin.lng);
+        reverseGeocode(origin).then(addr => { window.originAddress = addr; updateReceipt(); });
+        processRoute(origin, dest);
+      }).catch(error => {
+        console.error("Erro ao calcular as coordenadas:", error);
+        document.getElementById("resultado").innerText = error.message;
+        document.getElementById("tollInfo").innerText = "Sem pedágios";
       });
     }
     
-    function processRoute(destLat, destLng){
-      addDestinationMarker(destLat, destLng);
-      window.destinationCoords = { lat: destLat, lng: destLng };
+    // Agora a rota é calculada utilizando as coordenadas de origem e destino fornecidas.
+    function processRoute(origin, dest){
+      addDestinationMarker(dest.lat, dest.lng);
+      window.destinationCoords = { lat: dest.lat, lng: dest.lng };
       const routingService = platform.getRoutingService(null, 8);
       const params = {
         transportMode: 'car',
-        origin: `${currentLocation.lat},${currentLocation.lng}`,
-        destination: `${destLat},${destLng}`,
+        origin: `${origin.lat},${origin.lng}`,
+        destination: `${dest.lat},${dest.lng}`,
         alternatives: 2,
         return: 'summary,polyline,travelSummary,tolls'
       };
@@ -303,6 +363,8 @@
     window.onload = function(){
       getUserLocation().then(location => {
         currentLocation = location;
+        // Define a origem padrão como a localização do usuário se o campo não for modificado
+        if(!originCoords) originCoords = location;
         initMap(location.lat, location.lng);
         addOriginMarker(location.lat, location.lng);
         reverseGeocode(location).then(addr => { window.originAddress = addr; updateReceipt(); });
