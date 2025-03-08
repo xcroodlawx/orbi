@@ -132,26 +132,46 @@
       cursor: pointer; 
       color: #fff; 
     }
-    #receipt { 
-      padding: 1rem; 
-      border-bottom: 1px solid #ccc; 
-      margin-bottom: 1rem; 
-      background: #fff; 
-      border-radius: 8px; 
+    /* Estilo para o card de resultados */
+    #resultsContainer {
+      display: none; /* inicialmente oculto */
+      position: relative;
+      background: #fff;
+      padding: 1rem;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 8px rgba(212, 130, 153, 0.5);
     }
-    #receipt h2 { 
-      color: #2979ff; 
-      margin-bottom: 0.5rem; 
+    /* Fundo gradiente animado com pseudo-elemento */
+    #resultsContainer::before {
+      content: "";
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      background: linear-gradient(45deg, #d48299, #f7c9d1, #d48299);
+      background-size: 300% 300%;
+      z-index: -1;
+      border-radius: 14px;
+      animation: gradientShift 3s ease infinite;
     }
-    #map { 
-      width: 100%; 
-      height: 400px; 
-      border: none; 
-      border-bottom: 1px solid #ccc; 
-      margin-bottom: 1rem; 
-      border-radius: 8px; 
-      overflow: hidden; 
+    /* Efeito de shimmer para simular carregamento (opcional) */
+    #resultsContainer.loading::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      animation: loadingShimmer 2s infinite;
     }
+    @keyframes loadingShimmer {
+      0% { left: -100%; }
+      100% { left: 100%; }
+    }
+    /* Estilo para o botão de impressão */
     .imprimir-btn { 
       background: #00e676; 
       color: #fff; 
@@ -175,10 +195,6 @@
     .roundtrip-container input {
       width: auto;
       margin-right: 0.5rem;
-    }
-    /* Container de resultados oculto inicialmente */
-    #resultsContainer {
-      display: none;
     }
     @media (max-width:600px) { 
       main { padding: 0.5rem; } 
@@ -209,7 +225,7 @@
     </section>
     
     <!-- Container de resultados - oculto até o cálculo ocorrer com sucesso -->
-    <div id="resultsContainer">
+    <div id="resultsContainer" class="loading">
       <p id="resultado"></p>
       <p id="tollInfo"></p>
       <button class="imprimir-btn no-print" onclick="imprimirReciboPDF()">Imprimir PDF</button>
@@ -421,10 +437,13 @@
         } else {
           processRoute(origin, dest);
         }
+        // Exibe o container de resultados após o cálculo
+        document.getElementById("resultsContainer").style.display = "block";
       }).catch(error => {
         console.error("Erro ao calcular as coordenadas:", error);
         document.getElementById("resultado").innerText = error.message;
         document.getElementById("tollInfo").innerText = "Sem pedágios";
+        document.getElementById("resultsContainer").style.display = "block";
       });
     }
     
@@ -444,15 +463,12 @@
           displayRouteButtons(routeOptions);
           selectRouteOption(0);
           console.log("Rota normal calculada:", result);
-          document.getElementById("resultsContainer").style.display = "block";
         } else {
           alert("Nenhuma rota encontrada.");
-          document.getElementById("resultsContainer").style.display = "none";
         }
       }, error => {
         console.error("Erro ao calcular a rota:", error);
         alert("Erro ao calcular a rota.");
-        document.getElementById("resultsContainer").style.display = "none";
       });
     }
     
@@ -503,11 +519,9 @@
         displayRouteButtons(routeOptions);
         selectRouteOption(0, true);
         console.log("Rota de ida e volta calculada:", routeOptions);
-        document.getElementById("resultsContainer").style.display = "block";
       }).catch(error => {
         console.error("Erro ao calcular a rota de ida e volta:", error);
         alert("Erro ao calcular a rota de ida e volta: " + error.message);
-        document.getElementById("resultsContainer").style.display = "none";
       });
     }
     
