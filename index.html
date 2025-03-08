@@ -502,9 +502,11 @@
       if(roundTrip){
         // Para rota de ida e volta, percorre cada segmento
         let rotaCombinada = routeOptions[index];
-        rotaCombinada.segments.forEach(segment => {
+        rotaCombinada.segments.forEach((segment, i) => {
+          // Define a cor: trecho de ida com preto, trecho de volta com vermelho
+          const strokeColor = i === 0 ? "black" : "red";
           const ls = H.geo.LineString.fromFlexiblePolyline(segment.sections[0].polyline);
-          const poly = new H.map.Polyline(ls, { style: { strokeColor: "black", lineWidth: 8 } });
+          const poly = new H.map.Polyline(ls, { style: { strokeColor: strokeColor, lineWidth: 8 } });
           mapGroup.addObject(poly);
           totalDist += segment.sections[0].summary.distance || 0;
           if(segment.sections[0].tolls && segment.sections[0].tolls.length > 0){
