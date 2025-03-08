@@ -205,7 +205,6 @@
     window.calculatedToll = "";
     window.originAddress = "";
     window.destinationAddress = "";
-    window.encodedRoutePolyline = "";
     let mapGroup = null, markerOrigin = null, markerDestination = null;
     let routeOptions = [];
     
@@ -366,9 +365,17 @@
       Promise.all([originPromise, destinationPromise]).then(([origin, dest]) => {
         initMap(origin.lat, origin.lng);
         addOriginMarker(origin.lat, origin.lng);
+        // Sempre adiciona o marcador de destino para referência
+        addDestinationMarker(dest.lat, dest.lng);
         reverseGeocode(origin).then(addr => { window.originAddress = addr; updateReceipt(); });
-        // Se "Ida e Volta" estiver marcado, definimos a rota como Origem -> Destino -> Origem
-        processRoute(origin, dest, idaVolta);
+        // Se "Ida e Volta" estiver marcado, processa duas rotas (ida e volta)
+        if(idaVolta){
+          processRoundTripRoute(origin, dest);
+          // Atualiza o endereço de destino para indicar ida e volta
+          window.destinationAddress = window.destinationAddress + " (Ida e Volta)";
+        } else {
+          processRoute(origin, dest);
+        }
       }).catch(error => {
         console.error("Erro ao calcular as coordenadas:", error);
         document.getElementById("resultado").innerText = error.message;
@@ -376,34 +383,15 @@
       });
     }
     
-    // Rota calculada com as coordenadas de origem e destino
-    function processRoute(origin, dest, idaVolta){
-      // Sempre adiciona marcador para destino (mesmo que a rota seja ida e volta)
-      addDestinationMarker(dest.lat, dest.lng);
-      
-      let params = {};
-      if(idaVolta){
-        // Para ida e volta: Rota: Origem -> Destino (via) -> Origem
-        params = {
-          transportMode: 'car',
-          origin: `${origin.lat},${origin.lng}`,
-          destination: `${origin.lat},${origin.lng}`,
-          via: `${dest.lat},${dest.lng}`,
-          alternatives: 2,
-          return: 'summary,polyline,travelSummary,tolls'
-        };
-        // Atualiza o endereço de destino para indicar ida e volta no recibo
-        window.destinationAddress = window.destinationAddress + " (Ida e Volta)";
-      } else {
-        params = {
-          transportMode: 'car',
-          origin: `${origin.lat},${origin.lng}`,
-          destination: `${dest.lat},${dest.lng}`,
-          alternatives: 2,
-          return: 'summary,polyline,travelSummary,tolls'
-        };
-      }
-      
+    // Função para processar rota normal (somente ida)
+    function processRoute(origin, dest){
+      const params = {
+        transportMode: 'car',
+        origin: `${origin.lat},${origin.lng}`,
+        destination: `${dest.lat},${dest.lng}`,
+        alternatives: 2,
+        return: 'summary,polyline,travelSummary,tolls'
+      };
       const routingService = platform.getRoutingService(null, 8);
       routingService.calculateRoute(params, result => {
         if(result.routes && result.routes.length > 0){
@@ -422,6 +410,56 @@
       });
     }
     
+    // Função para processar a rota de ida e volta (Origem -> Destino e Destino -> Origem)
+    function processRoundTripRoute(origin, dest){
+      const routingService = platform.getRoutingService(null, 8);
+      // Define os parâmetros para cada trecho
+      const paramsIda = {
+        transportMode: 'car',
+        origin: `${origin.lat},${origin.lng}`,
+        destination: `${dest.lat},${dest.lng}`,
+        return: 'summary,polyline,travelSummary,tolls'
+      };
+      const paramsVolta = {
+        transportMode: 'car',
+        origin: `${dest.lat},${dest.lng}`,
+        destination: `${origin.lat},${origin.lng}`,
+        return: 'summary,polyline,travelSummary,tolls'
+      };
+      
+      // Função auxiliar para encapsular a chamada da rota em uma Promise
+      function calculateRoutePromise(params) {
+        return new Promise((resolve, reject) => {
+          routingService.calculateRoute(params, result => {
+            if(result.routes && result.routes.length > 0){
+              resolve(result.routes[0]);
+            } else {
+              reject(new Error("Nenhuma rota encontrada."));
+            }
+          }, error => {
+            reject(error);
+          });
+        });
+      }
+      
+      Promise.all([
+        calculateRoutePromise(paramsIda),
+        calculateRoutePromise(paramsVolta)
+      ]).then(([rotaIda, rotaVolta]) => {
+        // Combina os resultados em um único objeto com dois segmentos
+        const rotaCombinada = { segments: [rotaIda, rotaVolta] };
+        routeOptions = [rotaCombinada];
+        displayRouteButtons(routeOptions);
+        // Seleciona a rota combinada para desenhar ambas as linhas
+        selectRouteOption(0, true);
+      }).catch(error => {
+        console.error("Erro ao calcular a rota de ida e volta:", error);
+        document.getElementById("resultado").innerText = "Erro ao calcular a rota de ida e volta.";
+        document.getElementById("tollInfo").innerText = "Sem pedágios";
+      });
+    }
+    
+    // Atualiza os botões de rota
     function displayRouteButtons(routes){
       let container = document.getElementById("routeButtons");
       if(!container){
@@ -432,49 +470,76 @@
       container.innerHTML = "";
       routes.forEach((route, index) => {
         let btn = document.createElement("button");
-        btn.textContent = index === 0 ? "Rota Principal" : "Rota Alternativa";
-        btn.style.backgroundColor = index === 0 ? "#007bff" : "#28a745";
+        if(route.segments){
+          btn.textContent = "Rota Ida e Volta";
+          btn.style.backgroundColor = "#007bff";
+        } else {
+          btn.textContent = index === 0 ? "Rota Principal" : "Rota Alternativa";
+          btn.style.backgroundColor = index === 0 ? "#007bff" : "#28a745";
+        }
         btn.style.margin = "0 5px";
-        btn.addEventListener("click", () => { selectRouteOption(index); });
+        btn.addEventListener("click", () => { 
+          if(route.segments){
+             selectRouteOption(index, true);
+          } else {
+             selectRouteOption(index);
+          }
+        });
         container.appendChild(btn);
       });
     }
     
-    function selectRouteOption(index){
+    // Desenha a rota selecionada no mapa e atualiza os valores (suporta rota normal e ida/volta)
+    function selectRouteOption(index, roundTrip = false){
       mapGroup.getObjects().forEach(obj => { 
         if(obj instanceof H.map.Polyline && obj !== markerOrigin && obj !== markerDestination){ 
           mapGroup.removeObject(obj); 
         }
       });
-      const route = routeOptions[index];
-      const ls = H.geo.LineString.fromFlexiblePolyline(route.sections[0].polyline);
-      const poly = new H.map.Polyline(ls, { style: { strokeColor: "black", lineWidth: 8 } });
-      mapGroup.addObject(poly);
       let totalDist = 0;
-      route.sections.forEach(section => { totalDist += (section.summary.length || section.summary.distance || 0); });
-      totalDist = totalDist / 1000;
-      document.getElementById("resultado").innerText = `Distância: ${totalDist.toFixed(2)} km`;
-      window.calculatedDistance = isNaN(totalDist) ? "0.00" : totalDist.toFixed(2);
-      try{
-        const tollCost = route.sections.reduce((total, section) => {
-          if(section.tolls && section.tolls.length > 0){
-            const sectionToll = section.tolls.reduce((subTotal, toll) => {
+      let totalToll = 0;
+      
+      if(roundTrip){
+        // Para rota de ida e volta, percorre cada segmento
+        let rotaCombinada = routeOptions[index];
+        rotaCombinada.segments.forEach(segment => {
+          const ls = H.geo.LineString.fromFlexiblePolyline(segment.sections[0].polyline);
+          const poly = new H.map.Polyline(ls, { style: { strokeColor: "black", lineWidth: 8 } });
+          mapGroup.addObject(poly);
+          totalDist += segment.sections[0].summary.distance || 0;
+          if(segment.sections[0].tolls && segment.sections[0].tolls.length > 0){
+            const segToll = segment.sections[0].tolls.reduce((subTotal, toll) => {
               if(toll.fares && toll.fares.length > 0){
                 const sum = toll.fares.reduce((fareSum, fare) => fareSum + (fare.price && typeof fare.price.value === "number" ? fare.price.value : 0), 0);
                 return subTotal + sum;
               }
               return subTotal;
             }, 0);
-            return total + sectionToll;
+            totalToll += segToll;
           }
-          return total;
-        }, 0) || 0;
-        document.getElementById("tollInfo").innerText = tollCost > 0 ? `Pedágio estimado: R$ ${tollCost.toFixed(2)}` : "Sem pedágios";
-        window.calculatedToll = tollCost.toFixed(2);
-      } catch(error){
-        console.error("Erro no cálculo do pedágio:", error);
-        document.getElementById("tollInfo").innerText = "Sem pedágios";
+        });
+      } else {
+        const route = routeOptions[index];
+        const ls = H.geo.LineString.fromFlexiblePolyline(route.sections[0].polyline);
+        const poly = new H.map.Polyline(ls, { style: { strokeColor: "black", lineWidth: 8 } });
+        mapGroup.addObject(poly);
+        totalDist += route.sections[0].summary.distance || 0;
+        if(route.sections[0].tolls && route.sections[0].tolls.length > 0){
+          totalToll += route.sections[0].tolls.reduce((total, toll) => {
+            if(toll.fares && toll.fares.length > 0){
+              const sum = toll.fares.reduce((fareSum, fare) => fareSum + (fare.price && typeof fare.price.value === "number" ? fare.price.value : 0), 0);
+              return total + sum;
+            }
+            return total;
+          }, 0);
+        }
       }
+      
+      totalDist = totalDist / 1000;
+      document.getElementById("resultado").innerText = `Distância: ${totalDist.toFixed(2)} km`;
+      window.calculatedDistance = isNaN(totalDist) ? "0.00" : totalDist.toFixed(2);
+      document.getElementById("tollInfo").innerText = totalToll > 0 ? `Pedágio estimado: R$ ${totalToll.toFixed(2)}` : "Sem pedágios";
+      window.calculatedToll = totalToll.toFixed(2);
       updateReceipt();
     }
     
