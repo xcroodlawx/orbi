@@ -178,6 +178,9 @@
       #printContainer, #map { padding: 0.8rem; } 
       .calc-section input, .calc-section button, .imprimir-btn { font-size: 0.9rem; } 
     }
+    .hidden {
+    display: none;
+}
   </style>
 </head>
 <body>
@@ -204,6 +207,10 @@
     <!-- Container de resultados -->
     <div id="resultsContainer">
       <div id="resultsCard">
+         <p id="resultado"></p>
+        <p id="tollInfo"></p>
+        <!-- Botão para capturar screenshot do card -->
+        <button class="imprimir-btn no-print" onclick="screenshotCard()">Download Screenshot</button>
                <div id="receipt">
           <h2>Recibo de Viagem</h2>
           <p id="pOrigem">Origem: </p>
