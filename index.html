@@ -178,9 +178,6 @@
       #printContainer, #map { padding: 0.8rem; } 
       .calc-section input, .calc-section button, .imprimir-btn { font-size: 0.9rem; } 
     }
-    .hidden {
-    display: none;
-}
   </style>
 </head>
 <body>
@@ -207,11 +204,8 @@
     <!-- Container de resultados -->
     <div id="resultsContainer">
       <div id="resultsCard">
-         <p id="resultado"></p>
-        <p id="tollInfo"></p>
-        <!-- Botão para capturar screenshot do card -->
-        <button class="imprimir-btn no-print" onclick="screenshotCard()">Download Screenshot</button>
-               <div id="receipt">
+        <!-- Exibe apenas os dados do recibo -->
+        <div id="receipt">
           <h2>Recibo de Viagem</h2>
           <p id="pOrigem">Origem: </p>
           <p id="pDestino">Destino: </p>
@@ -222,6 +216,7 @@
         </div>
         <div id="map"></div>
         <div id="routeButtons"></div>
+        <button class="imprimir-btn no-print" onclick="screenshotCard()">Download Screenshot</button>
       </div>
     </div>
   </main>
@@ -389,13 +384,11 @@
       mapGroup.addObject(markerDestination);
     }
     
-    // Função que utiliza a origem escolhida ou, se não informada, a geolocalização.
     function calcularDistancia(){
       const origemInput = document.getElementById("origem").value.trim();
       const destinoInput = document.getElementById("destino").value.trim();
       const idaVolta = document.getElementById("roundTrip").checked;
       
-      // Validação do campo de destino (obrigatório)
       if(destinoInput === ""){
         alert("Por favor, preencha o campo de destino.");
         return;
@@ -438,8 +431,9 @@
       } else if(destinationCoords){
         destinationPromise = Promise.resolve(destinationCoords);
       } else {
-        document.getElementById("resultado").innerText = "Por favor, insira um destino.";
-        document.getElementById("tollInfo").innerText = "";
+        window.calculatedDistance = "0.00";
+        window.calculatedToll = "0.00";
+        updateReceipt();
         return;
       }
       
@@ -457,20 +451,19 @@
         } else {
           processRoute(origin, dest);
         }
-        // Exibe o container de resultados e atualiza o mapa
         document.getElementById("resultsContainer").style.display = "block";
         if(map) {
           setTimeout(() => { map.getViewPort().resize(); }, 300);
         }
       }).catch(error => {
         console.error("Erro ao calcular as coordenadas:", error);
-        document.getElementById("resultado").innerText = error.message;
-        document.getElementById("tollInfo").innerText = "Sem pedágios";
+        window.calculatedDistance = "0.00";
+        window.calculatedToll = "0.00";
+        updateReceipt();
         document.getElementById("resultsContainer").style.display = "block";
       });
     }
     
-    // Função para processar rota normal (somente ida)
     function processRoute(origin, dest){
       const params = {
         transportMode: 'car',
@@ -495,7 +488,6 @@
       });
     }
     
-    // Função para processar a rota de ida e volta com alternativas para cada trecho
     function processRoundTripRoute(origin, dest){
       const routingService = platform.getRoutingService(null, 8);
       const paramsIda = {
@@ -532,9 +524,7 @@
         calculateRoutesPromise(paramsVolta)
       ]).then(([rotasIda, rotasVolta]) => {
         const combinedOptions = [];
-        // Rota Principal: primeira alternativa de ida e volta
         combinedOptions.push({ segments: [rotasIda[0], rotasVolta[0]] });
-        // Rota Alternativa: se existir segunda alternativa para ambos os trechos
         if(rotasIda.length > 1 && rotasVolta.length > 1){
           combinedOptions.push({ segments: [rotasIda[1], rotasVolta[1]] });
         }
@@ -548,7 +538,6 @@
       });
     }
     
-    // Atualiza os botões de rota
     function displayRouteButtons(routes){
       let container = document.getElementById("routeButtons");
       if(!container){
@@ -573,7 +562,6 @@
       });
     }
     
-    // Desenha a rota selecionada no mapa e atualiza os valores
     function selectRouteOption(index, roundTrip = false){
       mapGroup.getObjects().forEach(obj => { 
         if(obj instanceof H.map.Polyline && obj !== markerOrigin && obj !== markerDestination){ 
@@ -621,9 +609,8 @@
       
       totalDist = totalDist / 1000; // Converte para km
       console.log("Distância calculada:", totalDist);
-      document.getElementById("resultado").innerText = `Distância: ${totalDist.toFixed(2)} km`;
+      // Armazena os valores nas variáveis sem exibi-los diretamente
       window.calculatedDistance = isNaN(totalDist) ? "0.00" : totalDist.toFixed(2);
-      document.getElementById("tollInfo").innerText = totalToll > 0 ? `Pedágio estimado: R$ ${totalToll.toFixed(2)}` : "Sem pedágios";
       window.calculatedToll = totalToll.toFixed(2);
       updateReceipt();
     }
@@ -645,32 +632,22 @@
       document.getElementById("pTotal").innerText = `Total: R$ ${isNaN(tot) ? "0.00" : tot.toFixed(2)}`;
     }
     
-    // Função para capturar screenshot do card utilizando uma imagem estática no lugar do mapa interativo
     function screenshotCard(){
       const card = document.getElementById("resultsCard");
       const mapContainer = document.getElementById("map");
-      // Obtem dimensões do container do mapa
       const width = mapContainer.offsetWidth;
       const height = mapContainer.offsetHeight;
-      // Define centro (pode ser a localização atual ou outro ponto desejado)
       let centerLat = currentLocation ? currentLocation.lat : fallbackLocation.lat;
       let centerLng = currentLocation ? currentLocation.lng : fallbackLocation.lng;
-      const zoom = 14; // mesmo nível do mapa interativo
-      
-      // Gera a URL da imagem estática utilizando o serviço de mapas estáticos da HERE
+      const zoom = 14;
       const staticMapURL = `https://image.maps.ls.hereapi.com/mia/1.6/mapview?apiKey=${apiKey}&c=${centerLat},${centerLng}&z=${zoom}&w=${width}&h=${height}`;
-      
-      // Cria um elemento <img> com a imagem estática
       const img = document.createElement("img");
       img.src = staticMapURL;
       img.style.width = "100%";
       img.style.height = "100%";
-      
-      // Esconde o mapa interativo e insere a imagem estática no lugar
       mapContainer.style.display = "none";
       mapContainer.parentNode.insertBefore(img, mapContainer);
       
-      // Captura o screenshot do card com a imagem estática
       html2canvas(card).then(canvas => {
         const imgData = canvas.toDataURL("image/png");
         const link = document.createElement("a");
@@ -679,12 +656,10 @@
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        // Restaura o mapa interativo: remove a imagem estática e mostra o mapa novamente
         img.parentNode.removeChild(img);
         mapContainer.style.display = "block";
       }).catch(error => {
         console.error("Erro ao capturar screenshot:", error);
-        // Em caso de erro, restaura o mapa
         img.parentNode.removeChild(img);
         mapContainer.style.display = "block";
       });
