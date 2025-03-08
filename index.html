@@ -10,7 +10,7 @@
   <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js"></script>
   <script src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"></script>
   <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
-  <!-- html2canvas para capturar screenshot -->
+  <!-- Usando html2canvas para captura -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     /* Reset e box-sizing */
@@ -642,21 +642,48 @@
       document.getElementById("pTotal").innerText = `Total: R$ ${isNaN(tot) ? "0.00" : tot.toFixed(2)}`;
     }
     
-    // Função para capturar screenshot do card e iniciar o download
+    // Função para capturar screenshot do card utilizando uma imagem estática no lugar do mapa interativo
     function screenshotCard(){
       const card = document.getElementById("resultsCard");
+      const mapContainer = document.getElementById("map");
+      // Obtem dimensões do container do mapa
+      const width = mapContainer.offsetWidth;
+      const height = mapContainer.offsetHeight;
+      // Define centro (pode ser a localização atual ou outro ponto desejado)
+      let centerLat = currentLocation ? currentLocation.lat : fallbackLocation.lat;
+      let centerLng = currentLocation ? currentLocation.lng : fallbackLocation.lng;
+      const zoom = 14; // mesmo nível do mapa interativo
+      
+      // Gera a URL da imagem estática utilizando o serviço de mapas estáticos da HERE
+      const staticMapURL = `https://image.maps.ls.hereapi.com/mia/1.6/mapview?apiKey=${apiKey}&c=${centerLat},${centerLng}&z=${zoom}&w=${width}&h=${height}`;
+      
+      // Cria um elemento <img> com a imagem estática
+      const img = document.createElement("img");
+      img.src = staticMapURL;
+      img.style.width = "100%";
+      img.style.height = "100%";
+      
+      // Esconde o mapa interativo e insere a imagem estática no lugar
+      mapContainer.style.display = "none";
+      mapContainer.parentNode.insertBefore(img, mapContainer);
+      
+      // Captura o screenshot do card com a imagem estática
       html2canvas(card).then(canvas => {
-        // Converte o canvas para uma URL de imagem
         const imgData = canvas.toDataURL("image/png");
-        // Cria um elemento <a> para download
         const link = document.createElement("a");
         link.href = imgData;
         link.download = "card_screenshot.png";
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        // Restaura o mapa interativo: remove a imagem estática e mostra o mapa novamente
+        img.parentNode.removeChild(img);
+        mapContainer.style.display = "block";
       }).catch(error => {
         console.error("Erro ao capturar screenshot:", error);
+        // Em caso de erro, restaura o mapa
+        img.parentNode.removeChild(img);
+        mapContainer.style.display = "block";
       });
     }
     
