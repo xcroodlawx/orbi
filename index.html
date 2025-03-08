@@ -529,7 +529,7 @@
           const ls = H.geo.LineString.fromFlexiblePolyline(segment.sections[0].polyline);
           const poly = new H.map.Polyline(ls, { style: { strokeColor: strokeColor, lineWidth: 8 } });
           mapGroup.addObject(poly);
-          totalDist += segment.sections[0].summary.distance || 0;
+          totalDist += segment.sections[0].summary.length || 0;
           if(segment.sections[0].tolls && segment.sections[0].tolls.length > 0){
             const segToll = segment.sections[0].tolls.reduce((subTotal, toll) => {
               if(toll.fares && toll.fares.length > 0){
@@ -546,7 +546,7 @@
         const ls = H.geo.LineString.fromFlexiblePolyline(route.sections[0].polyline);
         const poly = new H.map.Polyline(ls, { style: { strokeColor: "black", lineWidth: 8 } });
         mapGroup.addObject(poly);
-        totalDist += route.sections[0].summary.distance || 0;
+        totalDist += route.sections[0].summary.length || 0;
         if(route.sections[0].tolls && route.sections[0].tolls.length > 0){
           totalToll += route.sections[0].tolls.reduce((total, toll) => {
             if(toll.fares && toll.fares.length > 0){
