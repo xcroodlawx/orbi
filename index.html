@@ -13,7 +13,11 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
   <style>
     /* Reset e box-sizing */
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
     html, body { 
       font-family: Arial, sans-serif; 
       background: linear-gradient(135deg, #d986a2, #f7c9d1);
@@ -23,7 +27,9 @@
     }
     /* Esconde os cards de sugestões se estiverem vazios */
     #suggestions:empty,
-    #originSuggestions:empty { display: none; }
+    #originSuggestions:empty {
+      display: none;
+    }
     @page { size: 6in 12in; margin: 0; }
     @media print { 
       .no-print { display: none; } 
@@ -37,7 +43,7 @@
     }
     header h1, footer p { margin: 0; }
     main { 
-      max-width: 500px; 
+      max-width: 500px; /* Layout slim */
       margin: 20px auto;
       padding: 1rem;
     }
@@ -47,7 +53,9 @@
       border-radius: 8px; 
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
-    .calc-section { margin-bottom: 1rem; }
+    .calc-section { 
+      margin-bottom: 1rem; 
+    }
     .calc-section h2 { 
       text-align: center; 
       color: #2979ff; 
@@ -68,7 +76,9 @@
       cursor: pointer; 
       transition: background 0.2s; 
     }
-    .calc-section button:hover { background: #f50057; }
+    .calc-section button:hover { 
+      background: #f50057; 
+    }
     #suggestions, #originSuggestions { 
       list-style: none; 
       padding: 0.5rem; 
@@ -78,9 +88,17 @@
       max-height: 150px; 
       overflow-y: auto; 
     }
-    #suggestions li, #originSuggestions li { padding: 0.5rem; cursor: pointer; }
-    #suggestions li:hover, #originSuggestions li:hover { background-color: #e0e0e0; }
-    #routeButtons { margin: 10px 0; text-align: center; }
+    #suggestions li, #originSuggestions li { 
+      padding: 0.5rem; 
+      cursor: pointer; 
+    }
+    #suggestions li:hover, #originSuggestions li:hover { 
+      background-color: #e0e0e0; 
+    }
+    #routeButtons { 
+      margin: 10px 0; 
+      text-align: center; 
+    }
     #routeButtons button { 
       margin: 0 5px; 
       padding: 0.5rem 1rem; 
@@ -96,7 +114,10 @@
       background: #fff; 
       border-radius: 8px; 
     }
-    #receipt h2 { color: #2979ff; margin-bottom: 0.5rem; }
+    #receipt h2 { 
+      color: #2979ff; 
+      margin-bottom: 0.5rem; 
+    }
     #map { 
       width: 100%; 
       height: 400px; 
@@ -117,11 +138,23 @@
       margin-top: 1rem; 
       font-size: 1rem; 
     }
-    .imprimir-btn:hover { background: #00c853; }
-    .roundtrip-container { display: flex; align-items: center; margin: 0.4rem 0; }
-    .roundtrip-container input { width: auto; margin-right: 0.5rem; }
+    .imprimir-btn:hover { 
+      background: #00c853; 
+    }
+    /* Estilo para o checkbox */
+    .roundtrip-container {
+      display: flex;
+      align-items: center;
+      margin: 0.4rem 0;
+    }
+    .roundtrip-container input {
+      width: auto;
+      margin-right: 0.5rem;
+    }
     /* Container de resultados oculto inicialmente */
-    #resultsContainer { display: none; }
+    #resultsContainer {
+      display: none;
+    }
     @media (max-width:600px) { 
       main { padding: 0.5rem; } 
       #printContainer, #map { padding: 0.8rem; } 
@@ -313,9 +346,13 @@
           .then(r => r.json())
           .then(d => {
             if(d.items && d.items.length > 0){
-              if(d.items[0].address && d.items[0].address.label){ window.originAddress = d.items[0].address.label; }
+              if(d.items[0].address && d.items[0].address.label){ 
+                window.originAddress = d.items[0].address.label;
+              }
               return d.items[0].position;
-            } else { throw new Error("Origem não encontrada."); }
+            } else { 
+              throw new Error("Origem não encontrada.");
+            }
           });
       } else if(originCoords){
         originPromise = Promise.resolve(originCoords);
@@ -329,14 +366,19 @@
           .then(r => r.json())
           .then(d => {
             if(d.items && d.items.length > 0){
-              if(d.items[0].address && d.items[0].address.label){ window.destinationAddress = d.items[0].address.label; }
+              if(d.items[0].address && d.items[0].address.label){ 
+                window.destinationAddress = d.items[0].address.label;
+              }
               return d.items[0].position;
-            } else { throw new Error("Destino não encontrado."); }
+            } else { 
+              throw new Error("Destino não encontrado.");
+            }
           });
       } else if(destinationCoords){
         destinationPromise = Promise.resolve(destinationCoords);
       } else {
-        alert("Por favor, insira um destino.");
+        document.getElementById("resultado").innerText = "Por favor, insira um destino.";
+        document.getElementById("tollInfo").innerText = "";
         return;
       }
       
@@ -344,7 +386,10 @@
         initMap(origin.lat, origin.lng);
         addOriginMarker(origin.lat, origin.lng);
         addDestinationMarker(dest.lat, dest.lng);
-        reverseGeocode(origin).then(addr => { window.originAddress = addr; updateReceipt(); });
+        reverseGeocode(origin).then(addr => { 
+          window.originAddress = addr; 
+          updateReceipt();
+        });
         if(idaVolta){
           processRoundTripRoute(origin, dest);
           window.destinationAddress = window.destinationAddress + " (Ida e Volta)";
@@ -353,7 +398,8 @@
         }
       }).catch(error => {
         console.error("Erro ao calcular as coordenadas:", error);
-        alert("Erro ao calcular as coordenadas: " + error.message);
+        document.getElementById("resultado").innerText = error.message;
+        document.getElementById("tollInfo").innerText = "Sem pedágios";
       });
     }
     
@@ -371,28 +417,8 @@
         if(result.routes && result.routes.length > 0){
           routeOptions = result.routes.slice(0,2);
           displayRouteButtons(routeOptions);
-          // Para rota normal, usa sempre a primeira seção (índice 0)
-          const route = routeOptions[0];
-          const ls = H.geo.LineString.fromFlexiblePolyline(route.sections[0].polyline);
-          const poly = new H.map.Polyline(ls, { style: { strokeColor: "black", lineWidth: 8 } });
-          mapGroup.addObject(poly);
-          let totalDist = route.sections[0].summary.distance || 0;
-          let totalToll = 0;
-          if(route.sections[0].tolls && route.sections[0].tolls.length > 0){
-            totalToll += route.sections[0].tolls.reduce((total, toll) => {
-              if(toll.fares && toll.fares.length > 0){
-                const sum = toll.fares.reduce((fareSum, fare) => fareSum + (fare.price && typeof fare.price.value === "number" ? fare.price.value : 0), 0);
-                return total + sum;
-              }
-              return total;
-            }, 0);
-          }
-          totalDist = totalDist / 1000;
-          document.getElementById("resultado").innerText = `Distância: ${totalDist.toFixed(2)} km`;
-          window.calculatedDistance = isNaN(totalDist) ? "0.00" : totalDist.toFixed(2);
-          document.getElementById("tollInfo").innerText = totalToll > 0 ? `Pedágio estimado: R$ ${totalToll.toFixed(2)}` : "Sem pedágios";
-          window.calculatedToll = totalToll.toFixed(2);
-          updateReceipt();
+          selectRouteOption(0);
+          console.log("Rota normal calculada:", result);
           document.getElementById("resultsContainer").style.display = "block";
         } else {
           alert("Nenhuma rota encontrada.");
@@ -442,40 +468,16 @@
         calculateRoutesPromise(paramsVolta)
       ]).then(([rotasIda, rotasVolta]) => {
         const combinedOptions = [];
-        // Rota Principal: primeira alternativa de ida e de volta
+        // Rota Principal: primeira alternativa de ida e volta
         combinedOptions.push({ segments: [rotasIda[0], rotasVolta[0]] });
-        // Rota Alternativa: se existir segunda alternativa para ambos
+        // Rota Alternativa: se existir segunda alternativa para ambos os trechos
         if(rotasIda.length > 1 && rotasVolta.length > 1){
           combinedOptions.push({ segments: [rotasIda[1], rotasVolta[1]] });
         }
         routeOptions = combinedOptions;
         displayRouteButtons(routeOptions);
-        // Desenha a rota combinada utilizando a primeira seção de cada segmento
-        let totalDist = 0;
-        let totalToll = 0;
-        routeOptions[0].segments.forEach((segment, i) => {
-          const strokeColor = i === 0 ? "black" : "red";
-          const ls = H.geo.LineString.fromFlexiblePolyline(segment.sections[0].polyline);
-          const poly = new H.map.Polyline(ls, { style: { strokeColor: strokeColor, lineWidth: 8 } });
-          mapGroup.addObject(poly);
-          totalDist += segment.sections[0].summary.distance || 0;
-          if(segment.sections[0].tolls && segment.sections[0].tolls.length > 0){
-            const segToll = segment.sections[0].tolls.reduce((subTotal, toll) => {
-              if(toll.fares && toll.fares.length > 0){
-                const sum = toll.fares.reduce((fareSum, fare) => fareSum + (fare.price && typeof fare.price.value === "number" ? fare.price.value : 0), 0);
-                return subTotal + sum;
-              }
-              return subTotal;
-            }, 0);
-            totalToll += segToll;
-          }
-        });
-        totalDist = totalDist / 1000;
-        document.getElementById("resultado").innerText = `Distância: ${totalDist.toFixed(2)} km`;
-        window.calculatedDistance = isNaN(totalDist) ? "0.00" : totalDist.toFixed(2);
-        document.getElementById("tollInfo").innerText = totalToll > 0 ? `Pedágio estimado: R$ ${totalToll.toFixed(2)}` : "Sem pedágios";
-        window.calculatedToll = totalToll.toFixed(2);
-        updateReceipt();
+        selectRouteOption(0, true);
+        console.log("Rota de ida e volta calculada:", routeOptions);
         document.getElementById("resultsContainer").style.display = "block";
       }).catch(error => {
         console.error("Erro ao calcular a rota de ida e volta:", error);
@@ -509,7 +511,7 @@
       });
     }
     
-    // Desenha a rota selecionada no mapa e atualiza os valores, utilizando a primeira seção para o cálculo
+    // Desenha a rota selecionada no mapa e atualiza os valores, usando a primeira seção para o cálculo da distância
     function selectRouteOption(index, roundTrip = false){
       mapGroup.getObjects().forEach(obj => { 
         if(obj instanceof H.map.Polyline && obj !== markerOrigin && obj !== markerDestination){ 
@@ -522,6 +524,7 @@
       if(roundTrip){
         let rotaCombinada = routeOptions[index];
         rotaCombinada.segments.forEach((segment, i) => {
+          // Trecho de ida em preto; trecho de volta em vermelho
           const strokeColor = i === 0 ? "black" : "red";
           const ls = H.geo.LineString.fromFlexiblePolyline(segment.sections[0].polyline);
           const poly = new H.map.Polyline(ls, { style: { strokeColor: strokeColor, lineWidth: 8 } });
@@ -540,7 +543,6 @@
         });
       } else {
         const route = routeOptions[index];
-        // Utiliza a primeira seção (índice 0) para o cálculo
         const ls = H.geo.LineString.fromFlexiblePolyline(route.sections[0].polyline);
         const poly = new H.map.Polyline(ls, { style: { strokeColor: "black", lineWidth: 8 } });
         mapGroup.addObject(poly);
@@ -556,7 +558,8 @@
         }
       }
       
-      totalDist = totalDist / 1000; // Converter para km
+      totalDist = totalDist / 1000; // Converte para km
+      console.log("Distância calculada:", totalDist);
       document.getElementById("resultado").innerText = `Distância: ${totalDist.toFixed(2)} km`;
       window.calculatedDistance = isNaN(totalDist) ? "0.00" : totalDist.toFixed(2);
       document.getElementById("tollInfo").innerText = totalToll > 0 ? `Pedágio estimado: R$ ${totalToll.toFixed(2)}` : "Sem pedágios";
@@ -601,7 +604,10 @@
         if(!originCoords) originCoords = location;
         initMap(location.lat, location.lng);
         addOriginMarker(location.lat, location.lng);
-        reverseGeocode(location).then(addr => { window.originAddress = addr; updateReceipt(); });
+        reverseGeocode(location).then(addr => { 
+          window.originAddress = addr; 
+          updateReceipt(); 
+        });
       });
     }
   </script>
