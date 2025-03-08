@@ -47,11 +47,22 @@
       margin: 20px auto;
       padding: 1rem;
     }
-    #printContainer { 
-      background: #fff; 
-      padding: 1rem; 
-      border-radius: 8px; 
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    /* Container com bordas arredondadas e sombreamento gradiente elegante */
+    #printContainer {
+      background: #fff;
+      padding: 1rem;
+      border-radius: 12px;
+      border: 2px solid transparent;
+      background-image: 
+        linear-gradient(white, white),
+        linear-gradient(45deg, #d48299, #f7c9d1);
+      background-origin: border-box;
+      background-clip: padding-box, border-box;
+      box-shadow: 0 4px 8px rgba(212, 130, 153, 0.5);
+      transition: box-shadow 0.3s ease;
+    }
+    #printContainer:hover {
+      box-shadow: 0 8px 16px rgba(212, 130, 153, 0.7);
     }
     .calc-section { 
       margin-bottom: 1rem; 
