@@ -47,22 +47,36 @@
       margin: 20px auto;
       padding: 1rem;
     }
-    /* Container com bordas arredondadas e sombreamento gradiente elegante */
+    /* Container com bordas arredondadas e efeito de borda gradiente animada */
     #printContainer {
+      position: relative;
       background: #fff;
       padding: 1rem;
       border-radius: 12px;
-      border: 2px solid transparent;
-      background-image: 
-        linear-gradient(white, white),
-        linear-gradient(45deg, #d48299, #f7c9d1);
-      background-origin: border-box;
-      background-clip: padding-box, border-box;
       box-shadow: 0 4px 8px rgba(212, 130, 153, 0.5);
+      overflow: hidden;
       transition: box-shadow 0.3s ease;
     }
     #printContainer:hover {
       box-shadow: 0 8px 16px rgba(212, 130, 153, 0.7);
+    }
+    #printContainer::before {
+      content: "";
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      background: linear-gradient(45deg, #d48299, #f7c9d1, #d48299);
+      background-size: 300% 300%;
+      z-index: -1;
+      animation: gradientShift 3s ease infinite;
+      border-radius: 14px;
+    }
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
     }
     .calc-section { 
       margin-bottom: 1rem; 
