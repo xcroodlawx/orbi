@@ -132,49 +132,38 @@
       cursor: pointer; 
       color: #fff; 
     }
-    /* Container de resultados – exibe o card com o efeito gradiente */
+    /* Container de resultados – ficará oculto até o cálculo ocorrer */
     #resultsContainer {
-      display: none; /* inicialmente oculto */
+      display: none;
       padding: 1rem;
     }
-    /* Card interno com borda gradiente */
+    /* Card com efeito de fundo gradiente */
     #resultsCard {
-      position: relative;
-      background: #fff;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 4px 8px rgba(212, 130, 153, 0.5);
-      padding: 1rem;
-    }
-    #resultsCard::before {
-      content: "";
-      position: absolute;
-      top: -2px;
-      left: -2px;
-      right: -2px;
-      bottom: -2px;
       background: linear-gradient(45deg, #ff4081, #2979ff);
-      background-size: 300% 300%;
-      z-index: -1;
       border-radius: 14px;
+      padding: 2px; /* Esse padding cria o efeito de "borda" */
       animation: gradientShift 3s ease infinite;
     }
-    /* Efeito de shimmer para simular carregamento (opcional) */
-    #resultsCard.loading::after {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: -100%;
+    /* Conteúdo interno do card com fundo branco */
+    .card-content {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1rem;
+      position: relative;
+    }
+    /* Estilo do container do mapa */
+    #map {
       width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-      animation: loadingShimmer 2s infinite;
+      height: 400px;
+      border: none;
+      border-bottom: 1px solid #ccc;
+      margin-bottom: 1rem;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+      z-index: 1;
     }
-    @keyframes loadingShimmer {
-      0% { left: -100%; }
-      100% { left: 100%; }
-    }
-    /* Estilo para o botão de impressão */
+    /* Botão de impressão */
     .imprimir-btn { 
       background: #00e676; 
       color: #fff; 
@@ -198,18 +187,6 @@
     .roundtrip-container input {
       width: auto;
       margin-right: 0.5rem;
-    }
-    /* Estilo do container do mapa */
-    #map {
-      width: 100%;
-      height: 400px;
-      position: relative;
-      z-index: 1; /* Garante que o mapa fique acima do pseudo-elemento */
-      border: none;
-      border-bottom: 1px solid #ccc;
-      margin-bottom: 1rem;
-      border-radius: 8px;
-      overflow: hidden;
     }
     @media (max-width:600px) { 
       main { padding: 0.5rem; } 
@@ -239,23 +216,25 @@
       <button onclick="calcularDistancia()">Calcular</button>
     </section>
     
-    <!-- Container de resultados – o card com o efeito gradiente -->
+    <!-- Container de resultados -->
     <div id="resultsContainer">
-      <div id="resultsCard" class="loading">
-        <p id="resultado"></p>
-        <p id="tollInfo"></p>
-        <button class="imprimir-btn no-print" onclick="imprimirReciboPDF()">Imprimir PDF</button>
-        <div id="receipt">
-          <h2>Recibo de Viagem</h2>
-          <p id="pOrigem">Origem: </p>
-          <p id="pDestino">Destino: </p>
-          <p id="pKmRodado">Km Rodado: </p>
-          <p id="pPedagio">Valor do Pedágio: </p>
-          <p id="pValorKm">Valor do Km: </p>
-          <p id="pTotal">Total: </p>
+      <div id="resultsCard">
+        <div class="card-content">
+          <p id="resultado"></p>
+          <p id="tollInfo"></p>
+          <button class="imprimir-btn no-print" onclick="imprimirReciboPDF()">Imprimir PDF</button>
+          <div id="receipt">
+            <h2>Recibo de Viagem</h2>
+            <p id="pOrigem">Origem: </p>
+            <p id="pDestino">Destino: </p>
+            <p id="pKmRodado">Km Rodado: </p>
+            <p id="pPedagio">Valor do Pedágio: </p>
+            <p id="pValorKm">Valor do Km: </p>
+            <p id="pTotal">Total: </p>
+          </div>
+          <div id="map"></div>
+          <div id="routeButtons"></div>
         </div>
-        <div id="map"></div>
-        <div id="routeButtons"></div>
       </div>
     </div>
   </main>
@@ -454,8 +433,11 @@
         } else {
           processRoute(origin, dest);
         }
-        // Exibe o container de resultados após o cálculo
+        // Exibe o container de resultados e força o redimensionamento do mapa
         document.getElementById("resultsContainer").style.display = "block";
+        if(map) {
+          setTimeout(() => { map.getViewPort().resize(); }, 300);
+        }
       }).catch(error => {
         console.error("Erro ao calcular as coordenadas:", error);
         document.getElementById("resultado").innerText = error.message;
@@ -567,7 +549,7 @@
       });
     }
     
-    // Desenha a rota selecionada no mapa e atualiza os valores, usando a primeira seção para o cálculo da distância
+    // Desenha a rota selecionada no mapa e atualiza os valores
     function selectRouteOption(index, roundTrip = false){
       mapGroup.getObjects().forEach(obj => { 
         if(obj instanceof H.map.Polyline && obj !== markerOrigin && obj !== markerDestination){ 
@@ -580,7 +562,6 @@
       if(roundTrip){
         let rotaCombinada = routeOptions[index];
         rotaCombinada.segments.forEach((segment, i) => {
-          // Trecho de ida em preto; trecho de volta em vermelho
           const strokeColor = i === 0 ? "black" : "red";
           const ls = H.geo.LineString.fromFlexiblePolyline(segment.sections[0].polyline);
           const poly = new H.map.Polyline(ls, { style: { strokeColor: strokeColor, lineWidth: 8 } });
