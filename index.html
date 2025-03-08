@@ -78,10 +78,7 @@
       max-height: 150px; 
       overflow-y: auto; 
     }
-    #suggestions li, #originSuggestions li { 
-      padding: 0.5rem; 
-      cursor: pointer; 
-    }
+    #suggestions li, #originSuggestions li { padding: 0.5rem; cursor: pointer; }
     #suggestions li:hover, #originSuggestions li:hover { background-color: #e0e0e0; }
     #routeButtons { margin: 10px 0; text-align: center; }
     #routeButtons button { 
@@ -121,11 +118,7 @@
       font-size: 1rem; 
     }
     .imprimir-btn:hover { background: #00c853; }
-    .roundtrip-container {
-      display: flex;
-      align-items: center;
-      margin: 0.4rem 0;
-    }
+    .roundtrip-container { display: flex; align-items: center; margin: 0.4rem 0; }
     .roundtrip-container input { width: auto; margin-right: 0.5rem; }
     /* Container de resultados oculto inicialmente */
     #resultsContainer { display: none; }
@@ -378,7 +371,28 @@
         if(result.routes && result.routes.length > 0){
           routeOptions = result.routes.slice(0,2);
           displayRouteButtons(routeOptions);
-          selectRouteOption(0);
+          // Para rota normal, usa sempre a primeira seção (índice 0)
+          const route = routeOptions[0];
+          const ls = H.geo.LineString.fromFlexiblePolyline(route.sections[0].polyline);
+          const poly = new H.map.Polyline(ls, { style: { strokeColor: "black", lineWidth: 8 } });
+          mapGroup.addObject(poly);
+          let totalDist = route.sections[0].summary.distance || 0;
+          let totalToll = 0;
+          if(route.sections[0].tolls && route.sections[0].tolls.length > 0){
+            totalToll += route.sections[0].tolls.reduce((total, toll) => {
+              if(toll.fares && toll.fares.length > 0){
+                const sum = toll.fares.reduce((fareSum, fare) => fareSum + (fare.price && typeof fare.price.value === "number" ? fare.price.value : 0), 0);
+                return total + sum;
+              }
+              return total;
+            }, 0);
+          }
+          totalDist = totalDist / 1000;
+          document.getElementById("resultado").innerText = `Distância: ${totalDist.toFixed(2)} km`;
+          window.calculatedDistance = isNaN(totalDist) ? "0.00" : totalDist.toFixed(2);
+          document.getElementById("tollInfo").innerText = totalToll > 0 ? `Pedágio estimado: R$ ${totalToll.toFixed(2)}` : "Sem pedágios";
+          window.calculatedToll = totalToll.toFixed(2);
+          updateReceipt();
           document.getElementById("resultsContainer").style.display = "block";
         } else {
           alert("Nenhuma rota encontrada.");
@@ -428,13 +442,40 @@
         calculateRoutesPromise(paramsVolta)
       ]).then(([rotasIda, rotasVolta]) => {
         const combinedOptions = [];
+        // Rota Principal: primeira alternativa de ida e de volta
         combinedOptions.push({ segments: [rotasIda[0], rotasVolta[0]] });
+        // Rota Alternativa: se existir segunda alternativa para ambos
         if(rotasIda.length > 1 && rotasVolta.length > 1){
           combinedOptions.push({ segments: [rotasIda[1], rotasVolta[1]] });
         }
         routeOptions = combinedOptions;
         displayRouteButtons(routeOptions);
-        selectRouteOption(0, true);
+        // Desenha a rota combinada utilizando a primeira seção de cada segmento
+        let totalDist = 0;
+        let totalToll = 0;
+        routeOptions[0].segments.forEach((segment, i) => {
+          const strokeColor = i === 0 ? "black" : "red";
+          const ls = H.geo.LineString.fromFlexiblePolyline(segment.sections[0].polyline);
+          const poly = new H.map.Polyline(ls, { style: { strokeColor: strokeColor, lineWidth: 8 } });
+          mapGroup.addObject(poly);
+          totalDist += segment.sections[0].summary.distance || 0;
+          if(segment.sections[0].tolls && segment.sections[0].tolls.length > 0){
+            const segToll = segment.sections[0].tolls.reduce((subTotal, toll) => {
+              if(toll.fares && toll.fares.length > 0){
+                const sum = toll.fares.reduce((fareSum, fare) => fareSum + (fare.price && typeof fare.price.value === "number" ? fare.price.value : 0), 0);
+                return subTotal + sum;
+              }
+              return subTotal;
+            }, 0);
+            totalToll += segToll;
+          }
+        });
+        totalDist = totalDist / 1000;
+        document.getElementById("resultado").innerText = `Distância: ${totalDist.toFixed(2)} km`;
+        window.calculatedDistance = isNaN(totalDist) ? "0.00" : totalDist.toFixed(2);
+        document.getElementById("tollInfo").innerText = totalToll > 0 ? `Pedágio estimado: R$ ${totalToll.toFixed(2)}` : "Sem pedágios";
+        window.calculatedToll = totalToll.toFixed(2);
+        updateReceipt();
         document.getElementById("resultsContainer").style.display = "block";
       }).catch(error => {
         console.error("Erro ao calcular a rota de ida e volta:", error);
@@ -454,26 +495,21 @@
       container.innerHTML = "";
       routes.forEach((route, index) => {
         let btn = document.createElement("button");
-        if(route.segments){
-          btn.textContent = index === 0 ? "Rota Principal" : "Rota Alternativa";
-          btn.style.backgroundColor = index === 0 ? "#007bff" : "#28a745";
-        } else {
-          btn.textContent = index === 0 ? "Rota Principal" : "Rota Alternativa";
-          btn.style.backgroundColor = index === 0 ? "#007bff" : "#28a745";
-        }
+        btn.textContent = index === 0 ? "Rota Principal" : "Rota Alternativa";
+        btn.style.backgroundColor = index === 0 ? "#007bff" : "#28a745";
         btn.style.margin = "0 5px";
         btn.addEventListener("click", () => { 
           if(route.segments){
-             selectRouteOption(index, true);
+            selectRouteOption(index, true);
           } else {
-             selectRouteOption(index);
+            selectRouteOption(index);
           }
         });
         container.appendChild(btn);
       });
     }
     
-    // Desenha a rota selecionada no mapa e atualiza os valores, somando todas as seções para calcular a distância
+    // Desenha a rota selecionada no mapa e atualiza os valores, utilizando a primeira seção para o cálculo
     function selectRouteOption(index, roundTrip = false){
       mapGroup.getObjects().forEach(obj => { 
         if(obj instanceof H.map.Polyline && obj !== markerOrigin && obj !== markerDestination){ 
@@ -486,45 +522,41 @@
       if(roundTrip){
         let rotaCombinada = routeOptions[index];
         rotaCombinada.segments.forEach((segment, i) => {
-          // Trecho de ida em preto; trecho de volta em vermelho
           const strokeColor = i === 0 ? "black" : "red";
-          segment.sections.forEach(section => {
-            const ls = H.geo.LineString.fromFlexiblePolyline(section.polyline);
-            const poly = new H.map.Polyline(ls, { style: { strokeColor: strokeColor, lineWidth: 8 } });
-            mapGroup.addObject(poly);
-            totalDist += section.summary.distance || 0;
-            if(section.tolls && section.tolls.length > 0){
-              const segToll = section.tolls.reduce((subTotal, toll) => {
-                if(toll.fares && toll.fares.length > 0){
-                  const sum = toll.fares.reduce((fareSum, fare) => fareSum + (fare.price && typeof fare.price.value === "number" ? fare.price.value : 0), 0);
-                  return subTotal + sum;
-                }
-                return subTotal;
-              }, 0);
-              totalToll += segToll;
-            }
-          });
+          const ls = H.geo.LineString.fromFlexiblePolyline(segment.sections[0].polyline);
+          const poly = new H.map.Polyline(ls, { style: { strokeColor: strokeColor, lineWidth: 8 } });
+          mapGroup.addObject(poly);
+          totalDist += segment.sections[0].summary.distance || 0;
+          if(segment.sections[0].tolls && segment.sections[0].tolls.length > 0){
+            const segToll = segment.sections[0].tolls.reduce((subTotal, toll) => {
+              if(toll.fares && toll.fares.length > 0){
+                const sum = toll.fares.reduce((fareSum, fare) => fareSum + (fare.price && typeof fare.price.value === "number" ? fare.price.value : 0), 0);
+                return subTotal + sum;
+              }
+              return subTotal;
+            }, 0);
+            totalToll += segToll;
+          }
         });
       } else {
         const route = routeOptions[index];
-        route.sections.forEach(section => {
-          const ls = H.geo.LineString.fromFlexiblePolyline(section.polyline);
-          const poly = new H.map.Polyline(ls, { style: { strokeColor: "black", lineWidth: 8 } });
-          mapGroup.addObject(poly);
-          totalDist += section.summary.distance || 0;
-          if(section.tolls && section.tolls.length > 0){
-            totalToll += section.tolls.reduce((total, toll) => {
-              if(toll.fares && toll.fares.length > 0){
-                const sum = toll.fares.reduce((fareSum, fare) => fareSum + (fare.price && typeof fare.price.value === "number" ? fare.price.value : 0), 0);
-                return total + sum;
-              }
-              return total;
-            }, 0);
-          }
-        });
+        // Utiliza a primeira seção (índice 0) para o cálculo
+        const ls = H.geo.LineString.fromFlexiblePolyline(route.sections[0].polyline);
+        const poly = new H.map.Polyline(ls, { style: { strokeColor: "black", lineWidth: 8 } });
+        mapGroup.addObject(poly);
+        totalDist += route.sections[0].summary.distance || 0;
+        if(route.sections[0].tolls && route.sections[0].tolls.length > 0){
+          totalToll += route.sections[0].tolls.reduce((total, toll) => {
+            if(toll.fares && toll.fares.length > 0){
+              const sum = toll.fares.reduce((fareSum, fare) => fareSum + (fare.price && typeof fare.price.value === "number" ? fare.price.value : 0), 0);
+              return total + sum;
+            }
+            return total;
+          }, 0);
+        }
       }
       
-      totalDist = totalDist / 1000; // converte para km
+      totalDist = totalDist / 1000; // Converter para km
       document.getElementById("resultado").innerText = `Distância: ${totalDist.toFixed(2)} km`;
       window.calculatedDistance = isNaN(totalDist) ? "0.00" : totalDist.toFixed(2);
       document.getElementById("tollInfo").innerText = totalToll > 0 ? `Pedágio estimado: R$ ${totalToll.toFixed(2)}` : "Sem pedágios";
