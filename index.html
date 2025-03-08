@@ -13,11 +13,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
   <style>
     /* Reset e box-sizing */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { 
       font-family: Arial, sans-serif; 
       background: linear-gradient(135deg, #d986a2, #f7c9d1);
@@ -27,9 +23,7 @@
     }
     /* Esconde os cards de sugestões se estiverem vazios */
     #suggestions:empty,
-    #originSuggestions:empty {
-      display: none;
-    }
+    #originSuggestions:empty { display: none; }
     @page { size: 6in 12in; margin: 0; }
     @media print { 
       .no-print { display: none; } 
@@ -43,7 +37,7 @@
     }
     header h1, footer p { margin: 0; }
     main { 
-      max-width: 500px; /* Layout slim */
+      max-width: 500px; 
       margin: 20px auto;
       padding: 1rem;
     }
@@ -53,9 +47,7 @@
       border-radius: 8px; 
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
-    .calc-section { 
-      margin-bottom: 1rem; 
-    }
+    .calc-section { margin-bottom: 1rem; }
     .calc-section h2 { 
       text-align: center; 
       color: #2979ff; 
@@ -76,9 +68,7 @@
       cursor: pointer; 
       transition: background 0.2s; 
     }
-    .calc-section button:hover { 
-      background: #f50057; 
-    }
+    .calc-section button:hover { background: #f50057; }
     #suggestions, #originSuggestions { 
       list-style: none; 
       padding: 0.5rem; 
@@ -92,13 +82,8 @@
       padding: 0.5rem; 
       cursor: pointer; 
     }
-    #suggestions li:hover, #originSuggestions li:hover { 
-      background-color: #e0e0e0; 
-    }
-    #routeButtons { 
-      margin: 10px 0; 
-      text-align: center; 
-    }
+    #suggestions li:hover, #originSuggestions li:hover { background-color: #e0e0e0; }
+    #routeButtons { margin: 10px 0; text-align: center; }
     #routeButtons button { 
       margin: 0 5px; 
       padding: 0.5rem 1rem; 
@@ -114,10 +99,7 @@
       background: #fff; 
       border-radius: 8px; 
     }
-    #receipt h2 { 
-      color: #2979ff; 
-      margin-bottom: 0.5rem; 
-    }
+    #receipt h2 { color: #2979ff; margin-bottom: 0.5rem; }
     #map { 
       width: 100%; 
       height: 400px; 
@@ -138,23 +120,15 @@
       margin-top: 1rem; 
       font-size: 1rem; 
     }
-    .imprimir-btn:hover { 
-      background: #00c853; 
-    }
-    /* Estilo para o checkbox */
+    .imprimir-btn:hover { background: #00c853; }
     .roundtrip-container {
       display: flex;
       align-items: center;
       margin: 0.4rem 0;
     }
-    .roundtrip-container input {
-      width: auto;
-      margin-right: 0.5rem;
-    }
+    .roundtrip-container input { width: auto; margin-right: 0.5rem; }
     /* Container de resultados oculto inicialmente */
-    #resultsContainer {
-      display: none;
-    }
+    #resultsContainer { display: none; }
     @media (max-width:600px) { 
       main { padding: 0.5rem; } 
       #printContainer, #map { padding: 0.8rem; } 
@@ -499,7 +473,7 @@
       });
     }
     
-    // Desenha a rota selecionada no mapa e atualiza os valores (suporta rota normal e ida/volta)
+    // Desenha a rota selecionada no mapa e atualiza os valores, somando todas as seções para calcular a distância
     function selectRouteOption(index, roundTrip = false){
       mapGroup.getObjects().forEach(obj => { 
         if(obj instanceof H.map.Polyline && obj !== markerOrigin && obj !== markerDestination){ 
@@ -512,40 +486,45 @@
       if(roundTrip){
         let rotaCombinada = routeOptions[index];
         rotaCombinada.segments.forEach((segment, i) => {
+          // Trecho de ida em preto; trecho de volta em vermelho
           const strokeColor = i === 0 ? "black" : "red";
-          const ls = H.geo.LineString.fromFlexiblePolyline(segment.sections[0].polyline);
-          const poly = new H.map.Polyline(ls, { style: { strokeColor: strokeColor, lineWidth: 8 } });
-          mapGroup.addObject(poly);
-          totalDist += segment.sections[0].summary.distance || 0;
-          if(segment.sections[0].tolls && segment.sections[0].tolls.length > 0){
-            const segToll = segment.sections[0].tolls.reduce((subTotal, toll) => {
-              if(toll.fares && toll.fares.length > 0){
-                const sum = toll.fares.reduce((fareSum, fare) => fareSum + (fare.price && typeof fare.price.value === "number" ? fare.price.value : 0), 0);
-                return subTotal + sum;
-              }
-              return subTotal;
-            }, 0);
-            totalToll += segToll;
-          }
+          segment.sections.forEach(section => {
+            const ls = H.geo.LineString.fromFlexiblePolyline(section.polyline);
+            const poly = new H.map.Polyline(ls, { style: { strokeColor: strokeColor, lineWidth: 8 } });
+            mapGroup.addObject(poly);
+            totalDist += section.summary.distance || 0;
+            if(section.tolls && section.tolls.length > 0){
+              const segToll = section.tolls.reduce((subTotal, toll) => {
+                if(toll.fares && toll.fares.length > 0){
+                  const sum = toll.fares.reduce((fareSum, fare) => fareSum + (fare.price && typeof fare.price.value === "number" ? fare.price.value : 0), 0);
+                  return subTotal + sum;
+                }
+                return subTotal;
+              }, 0);
+              totalToll += segToll;
+            }
+          });
         });
       } else {
         const route = routeOptions[index];
-        const ls = H.geo.LineString.fromFlexiblePolyline(route.sections[0].polyline);
-        const poly = new H.map.Polyline(ls, { style: { strokeColor: "black", lineWidth: 8 } });
-        mapGroup.addObject(poly);
-        totalDist += route.sections[0].summary.distance || 0;
-        if(route.sections[0].tolls && route.sections[0].tolls.length > 0){
-          totalToll += route.sections[0].tolls.reduce((total, toll) => {
-            if(toll.fares && toll.fares.length > 0){
-              const sum = toll.fares.reduce((fareSum, fare) => fareSum + (fare.price && typeof fare.price.value === "number" ? fare.price.value : 0), 0);
-              return total + sum;
-            }
-            return total;
-          }, 0);
-        }
+        route.sections.forEach(section => {
+          const ls = H.geo.LineString.fromFlexiblePolyline(section.polyline);
+          const poly = new H.map.Polyline(ls, { style: { strokeColor: "black", lineWidth: 8 } });
+          mapGroup.addObject(poly);
+          totalDist += section.summary.distance || 0;
+          if(section.tolls && section.tolls.length > 0){
+            totalToll += section.tolls.reduce((total, toll) => {
+              if(toll.fares && toll.fares.length > 0){
+                const sum = toll.fares.reduce((fareSum, fare) => fareSum + (fare.price && typeof fare.price.value === "number" ? fare.price.value : 0), 0);
+                return total + sum;
+              }
+              return total;
+            }, 0);
+          }
+        });
       }
       
-      totalDist = totalDist / 1000;
+      totalDist = totalDist / 1000; // converte para km
       document.getElementById("resultado").innerText = `Distância: ${totalDist.toFixed(2)} km`;
       window.calculatedDistance = isNaN(totalDist) ? "0.00" : totalDist.toFixed(2);
       document.getElementById("tollInfo").innerText = totalToll > 0 ? `Pedágio estimado: R$ ${totalToll.toFixed(2)}` : "Sem pedágios";
