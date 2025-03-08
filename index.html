@@ -141,6 +141,16 @@
     .imprimir-btn:hover { 
       background: #00c853; 
     }
+    /* Estilo para o checkbox */
+    .roundtrip-container {
+      display: flex;
+      align-items: center;
+      margin: 0.4rem 0;
+    }
+    .roundtrip-container input {
+      width: auto;
+      margin-right: 0.5rem;
+    }
     @media (max-width:600px) { 
       main { padding: 0.5rem; } 
       #printContainer, #map { padding: 0.8rem; } 
@@ -161,6 +171,11 @@
       <!-- Campo de Destino -->
       <input type="text" id="destino" placeholder="Digite o nome do local de destino" autocomplete="off">
       <ul id="suggestions"></ul>
+      <!-- Checkbox Ida e Volta -->
+      <div class="roundtrip-container">
+        <input type="checkbox" id="roundTrip">
+        <label for="roundTrip">Ida e Volta</label>
+      </div>
       <button onclick="calcularDistancia()">Calcular</button>
       <p id="resultado"></p>
       <p id="tollInfo"></p>
@@ -310,6 +325,7 @@
     function calcularDistancia(){
       const origemInput = document.getElementById("origem").value.trim();
       const destinoInput = document.getElementById("destino").value.trim();
+      const idaVolta = document.getElementById("roundTrip").checked;
       
       let originPromise;
       if(origemInput && !originCoords){
@@ -351,7 +367,8 @@
         initMap(origin.lat, origin.lng);
         addOriginMarker(origin.lat, origin.lng);
         reverseGeocode(origin).then(addr => { window.originAddress = addr; updateReceipt(); });
-        processRoute(origin, dest);
+        // Se "Ida e Volta" estiver marcado, definimos a rota como Origem -> Destino -> Origem
+        processRoute(origin, dest, idaVolta);
       }).catch(error => {
         console.error("Erro ao calcular as coordenadas:", error);
         document.getElementById("resultado").innerText = error.message;
@@ -360,17 +377,34 @@
     }
     
     // Rota calculada com as coordenadas de origem e destino
-    function processRoute(origin, dest){
+    function processRoute(origin, dest, idaVolta){
+      // Sempre adiciona marcador para destino (mesmo que a rota seja ida e volta)
       addDestinationMarker(dest.lat, dest.lng);
-      window.destinationCoords = { lat: dest.lat, lng: dest.lng };
+      
+      let params = {};
+      if(idaVolta){
+        // Para ida e volta: Rota: Origem -> Destino (via) -> Origem
+        params = {
+          transportMode: 'car',
+          origin: `${origin.lat},${origin.lng}`,
+          destination: `${origin.lat},${origin.lng}`,
+          via: `${dest.lat},${dest.lng}`,
+          alternatives: 2,
+          return: 'summary,polyline,travelSummary,tolls'
+        };
+        // Atualiza o endereço de destino para indicar ida e volta no recibo
+        window.destinationAddress = window.destinationAddress + " (Ida e Volta)";
+      } else {
+        params = {
+          transportMode: 'car',
+          origin: `${origin.lat},${origin.lng}`,
+          destination: `${dest.lat},${dest.lng}`,
+          alternatives: 2,
+          return: 'summary,polyline,travelSummary,tolls'
+        };
+      }
+      
       const routingService = platform.getRoutingService(null, 8);
-      const params = {
-        transportMode: 'car',
-        origin: `${origin.lat},${origin.lng}`,
-        destination: `${dest.lat},${dest.lng}`,
-        alternatives: 2,
-        return: 'summary,polyline,travelSummary,tolls'
-      };
       routingService.calculateRoute(params, result => {
         if(result.routes && result.routes.length > 0){
           routeOptions = result.routes.slice(0,2);
