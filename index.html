@@ -151,6 +151,10 @@
       width: auto;
       margin-right: 0.5rem;
     }
+    /* Container de resultados oculto inicialmente */
+    #resultsContainer {
+      display: none;
+    }
     @media (max-width:600px) { 
       main { padding: 0.5rem; } 
       #printContainer, #map { padding: 0.8rem; } 
@@ -168,8 +172,8 @@
       <!-- Campo de Origem -->
       <input type="text" id="origem" placeholder="Seu local" autocomplete="off">
       <ul id="originSuggestions"></ul>
-      <!-- Campo de Destino -->
-      <input type="text" id="destino" placeholder="Digite o nome do local de destino" autocomplete="off">
+      <!-- Campo de Destino (obrigatório) -->
+      <input type="text" id="destino" placeholder="Digite o nome do local de destino" autocomplete="off" required>
       <ul id="suggestions"></ul>
       <!-- Checkbox Ida e Volta -->
       <div class="roundtrip-container">
@@ -177,21 +181,25 @@
         <label for="roundTrip">Ida e Volta</label>
       </div>
       <button onclick="calcularDistancia()">Calcular</button>
+    </section>
+    
+    <!-- Container de resultados - oculto até o cálculo ocorrer com sucesso -->
+    <div id="resultsContainer">
       <p id="resultado"></p>
       <p id="tollInfo"></p>
       <button class="imprimir-btn no-print" onclick="imprimirReciboPDF()">Imprimir PDF</button>
-    </section>
-    <div id="receipt">
-      <h2>Recibo de Viagem</h2>
-      <p id="pOrigem">Origem: </p>
-      <p id="pDestino">Destino: </p>
-      <p id="pKmRodado">Km Rodado: </p>
-      <p id="pPedagio">Valor do Pedágio: </p>
-      <p id="pValorKm">Valor do Km: </p>
-      <p id="pTotal">Total: </p>
+      <div id="receipt">
+        <h2>Recibo de Viagem</h2>
+        <p id="pOrigem">Origem: </p>
+        <p id="pDestino">Destino: </p>
+        <p id="pKmRodado">Km Rodado: </p>
+        <p id="pPedagio">Valor do Pedágio: </p>
+        <p id="pValorKm">Valor do Km: </p>
+        <p id="pTotal">Total: </p>
+      </div>
+      <div id="map"></div>
+      <div id="routeButtons"></div>
     </div>
-    <div id="map"></div>
-    <div id="routeButtons"></div>
   </main>
   <footer class="no-print">
     <p>&copy; 2025 Orbi. Todos os direitos reservados.</p>
@@ -326,9 +334,14 @@
       const destinoInput = document.getElementById("destino").value.trim();
       const idaVolta = document.getElementById("roundTrip").checked;
       
+      // Validação do campo de destino (obrigatório)
+      if(destinoInput === ""){
+        alert("Por favor, preencha o campo de destino.");
+        return;
+      }
+      
       let originPromise;
       if(origemInput && !originCoords){
-        // Se o usuário digitou algo e não selecionou sugestão, tenta geocodificar
         originPromise = fetch(`https://geocode.search.hereapi.com/v1/geocode?q=${encodeURIComponent(origemInput)}&apiKey=${apiKey}`)
           .then(r => r.json())
           .then(d => {
@@ -340,7 +353,6 @@
       } else if(originCoords){
         originPromise = Promise.resolve(originCoords);
       } else {
-        // Se o campo estiver vazio, usa a geolocalização
         originPromise = getUserLocation();
       }
       
@@ -357,15 +369,13 @@
       } else if(destinationCoords){
         destinationPromise = Promise.resolve(destinationCoords);
       } else {
-        document.getElementById("resultado").innerText = "Por favor, insira um destino.";
-        document.getElementById("tollInfo").innerText = "";
+        alert("Por favor, insira um destino.");
         return;
       }
       
       Promise.all([originPromise, destinationPromise]).then(([origin, dest]) => {
         initMap(origin.lat, origin.lng);
         addOriginMarker(origin.lat, origin.lng);
-        // Sempre adiciona o marcador de destino para referência
         addDestinationMarker(dest.lat, dest.lng);
         reverseGeocode(origin).then(addr => { window.originAddress = addr; updateReceipt(); });
         if(idaVolta){
@@ -376,8 +386,7 @@
         }
       }).catch(error => {
         console.error("Erro ao calcular as coordenadas:", error);
-        document.getElementById("resultado").innerText = error.message;
-        document.getElementById("tollInfo").innerText = "Sem pedágios";
+        alert("Erro ao calcular as coordenadas: " + error.message);
       });
     }
     
@@ -396,14 +405,15 @@
           routeOptions = result.routes.slice(0,2);
           displayRouteButtons(routeOptions);
           selectRouteOption(0);
+          document.getElementById("resultsContainer").style.display = "block";
         } else {
-          document.getElementById("resultado").innerText = "Nenhuma rota encontrada.";
-          document.getElementById("tollInfo").innerText = "Sem pedágios";
+          alert("Nenhuma rota encontrada.");
+          document.getElementById("resultsContainer").style.display = "none";
         }
       }, error => {
         console.error("Erro ao calcular a rota:", error);
-        document.getElementById("resultado").innerText = "Erro ao calcular a rota.";
-        document.getElementById("tollInfo").innerText = "Sem pedágios";
+        alert("Erro ao calcular a rota.");
+        document.getElementById("resultsContainer").style.display = "none";
       });
     }
     
@@ -443,22 +453,19 @@
         calculateRoutesPromise(paramsIda),
         calculateRoutesPromise(paramsVolta)
       ]).then(([rotasIda, rotasVolta]) => {
-        // Cria duas opções de rota: principal e alternativa (se disponível)
         const combinedOptions = [];
-        // Rota Principal: primeira alternativa de ida e volta
         combinedOptions.push({ segments: [rotasIda[0], rotasVolta[0]] });
-        // Rota Alternativa: se existir segunda alternativa para ambos os trechos
         if(rotasIda.length > 1 && rotasVolta.length > 1){
           combinedOptions.push({ segments: [rotasIda[1], rotasVolta[1]] });
         }
         routeOptions = combinedOptions;
         displayRouteButtons(routeOptions);
-        // Desenha a primeira opção combinada
         selectRouteOption(0, true);
+        document.getElementById("resultsContainer").style.display = "block";
       }).catch(error => {
         console.error("Erro ao calcular a rota de ida e volta:", error);
-        document.getElementById("resultado").innerText = "Erro ao calcular a rota de ida e volta.";
-        document.getElementById("tollInfo").innerText = "Sem pedágios";
+        alert("Erro ao calcular a rota de ida e volta: " + error.message);
+        document.getElementById("resultsContainer").style.display = "none";
       });
     }
     
@@ -473,7 +480,6 @@
       container.innerHTML = "";
       routes.forEach((route, index) => {
         let btn = document.createElement("button");
-        // Se os objetos tiverem a propriedade segments, é rota de ida e volta
         if(route.segments){
           btn.textContent = index === 0 ? "Rota Principal" : "Rota Alternativa";
           btn.style.backgroundColor = index === 0 ? "#007bff" : "#28a745";
@@ -506,7 +512,6 @@
       if(roundTrip){
         let rotaCombinada = routeOptions[index];
         rotaCombinada.segments.forEach((segment, i) => {
-          // Trecho de ida em preto; trecho de volta em vermelho
           const strokeColor = i === 0 ? "black" : "red";
           const ls = H.geo.LineString.fromFlexiblePolyline(segment.sections[0].polyline);
           const poly = new H.map.Polyline(ls, { style: { strokeColor: strokeColor, lineWidth: 8 } });
