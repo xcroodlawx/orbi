@@ -368,10 +368,8 @@
         // Sempre adiciona o marcador de destino para referência
         addDestinationMarker(dest.lat, dest.lng);
         reverseGeocode(origin).then(addr => { window.originAddress = addr; updateReceipt(); });
-        // Se "Ida e Volta" estiver marcado, processa duas rotas (ida e volta)
         if(idaVolta){
           processRoundTripRoute(origin, dest);
-          // Atualiza o endereço de destino para indicar ida e volta
           window.destinationAddress = window.destinationAddress + " (Ida e Volta)";
         } else {
           processRoute(origin, dest);
@@ -397,7 +395,6 @@
         if(result.routes && result.routes.length > 0){
           routeOptions = result.routes.slice(0,2);
           displayRouteButtons(routeOptions);
-          // Seleciona a rota principal por padrão
           selectRouteOption(0);
         } else {
           document.getElementById("resultado").innerText = "Nenhuma rota encontrada.";
@@ -410,29 +407,29 @@
       });
     }
     
-    // Função para processar a rota de ida e volta (Origem -> Destino e Destino -> Origem)
+    // Função para processar a rota de ida e volta com alternativas para cada trecho
     function processRoundTripRoute(origin, dest){
       const routingService = platform.getRoutingService(null, 8);
-      // Define os parâmetros para cada trecho
       const paramsIda = {
         transportMode: 'car',
         origin: `${origin.lat},${origin.lng}`,
         destination: `${dest.lat},${dest.lng}`,
+        alternatives: 2,
         return: 'summary,polyline,travelSummary,tolls'
       };
       const paramsVolta = {
         transportMode: 'car',
         origin: `${dest.lat},${dest.lng}`,
         destination: `${origin.lat},${origin.lng}`,
+        alternatives: 2,
         return: 'summary,polyline,travelSummary,tolls'
       };
       
-      // Função auxiliar para encapsular a chamada da rota em uma Promise
-      function calculateRoutePromise(params) {
+      function calculateRoutesPromise(params) {
         return new Promise((resolve, reject) => {
           routingService.calculateRoute(params, result => {
             if(result.routes && result.routes.length > 0){
-              resolve(result.routes[0]);
+              resolve(result.routes);
             } else {
               reject(new Error("Nenhuma rota encontrada."));
             }
@@ -443,14 +440,20 @@
       }
       
       Promise.all([
-        calculateRoutePromise(paramsIda),
-        calculateRoutePromise(paramsVolta)
-      ]).then(([rotaIda, rotaVolta]) => {
-        // Combina os resultados em um único objeto com dois segmentos
-        const rotaCombinada = { segments: [rotaIda, rotaVolta] };
-        routeOptions = [rotaCombinada];
+        calculateRoutesPromise(paramsIda),
+        calculateRoutesPromise(paramsVolta)
+      ]).then(([rotasIda, rotasVolta]) => {
+        // Cria duas opções de rota: principal e alternativa (se disponível)
+        const combinedOptions = [];
+        // Rota Principal: primeira alternativa de ida e volta
+        combinedOptions.push({ segments: [rotasIda[0], rotasVolta[0]] });
+        // Rota Alternativa: se existir segunda alternativa para ambos os trechos
+        if(rotasIda.length > 1 && rotasVolta.length > 1){
+          combinedOptions.push({ segments: [rotasIda[1], rotasVolta[1]] });
+        }
+        routeOptions = combinedOptions;
         displayRouteButtons(routeOptions);
-        // Seleciona a rota combinada para desenhar ambas as linhas
+        // Desenha a primeira opção combinada
         selectRouteOption(0, true);
       }).catch(error => {
         console.error("Erro ao calcular a rota de ida e volta:", error);
@@ -470,9 +473,10 @@
       container.innerHTML = "";
       routes.forEach((route, index) => {
         let btn = document.createElement("button");
+        // Se os objetos tiverem a propriedade segments, é rota de ida e volta
         if(route.segments){
-          btn.textContent = "Rota Ida e Volta";
-          btn.style.backgroundColor = "#007bff";
+          btn.textContent = index === 0 ? "Rota Principal" : "Rota Alternativa";
+          btn.style.backgroundColor = index === 0 ? "#007bff" : "#28a745";
         } else {
           btn.textContent = index === 0 ? "Rota Principal" : "Rota Alternativa";
           btn.style.backgroundColor = index === 0 ? "#007bff" : "#28a745";
@@ -500,10 +504,9 @@
       let totalToll = 0;
       
       if(roundTrip){
-        // Para rota de ida e volta, percorre cada segmento
         let rotaCombinada = routeOptions[index];
         rotaCombinada.segments.forEach((segment, i) => {
-          // Define a cor: trecho de ida com preto, trecho de volta com vermelho
+          // Trecho de ida em preto; trecho de volta em vermelho
           const strokeColor = i === 0 ? "black" : "red";
           const ls = H.geo.LineString.fromFlexiblePolyline(segment.sections[0].polyline);
           const poly = new H.map.Polyline(ls, { style: { strokeColor: strokeColor, lineWidth: 8 } });
@@ -579,7 +582,6 @@
     window.onload = function(){
       getUserLocation().then(location => {
         currentLocation = location;
-        // Define a origem padrão como a localização do usuário se o campo não for modificado
         if(!originCoords) originCoords = location;
         initMap(location.lat, location.lng);
         addOriginMarker(location.lat, location.lng);
