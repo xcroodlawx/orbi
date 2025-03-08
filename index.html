@@ -47,7 +47,7 @@
       margin: 20px auto;
       padding: 1rem;
     }
-    /* Container com bordas arredondadas e efeito de borda gradiente animada */
+    /* Container principal com efeito de borda gradiente animada */
     #printContainer {
       position: relative;
       background: #fff;
@@ -132,32 +132,35 @@
       cursor: pointer; 
       color: #fff; 
     }
-    /* Estilo para o card de resultados */
+    /* Container de resultados – exibe o card com o efeito gradiente */
     #resultsContainer {
       display: none; /* inicialmente oculto */
+      padding: 1rem;
+    }
+    /* Card interno com borda gradiente */
+    #resultsCard {
       position: relative;
       background: #fff;
-      padding: 1rem;
       border-radius: 12px;
       overflow: hidden;
       box-shadow: 0 4px 8px rgba(212, 130, 153, 0.5);
+      padding: 1rem;
     }
-    /* Fundo gradiente animado com pseudo-elemento */
-    #resultsContainer::before {
+    #resultsCard::before {
       content: "";
       position: absolute;
       top: -2px;
       left: -2px;
       right: -2px;
       bottom: -2px;
-      background: linear-gradient(45deg, #d48299, #f7c9d1, #d48299);
+      background: linear-gradient(45deg, #ff4081, #2979ff);
       background-size: 300% 300%;
       z-index: -1;
       border-radius: 14px;
       animation: gradientShift 3s ease infinite;
     }
     /* Efeito de shimmer para simular carregamento (opcional) */
-    #resultsContainer.loading::after {
+    #resultsCard.loading::after {
       content: "";
       position: absolute;
       top: 0;
@@ -196,6 +199,18 @@
       width: auto;
       margin-right: 0.5rem;
     }
+    /* Estilo do container do mapa */
+    #map {
+      width: 100%;
+      height: 400px;
+      position: relative;
+      z-index: 1; /* Garante que o mapa fique acima do pseudo-elemento */
+      border: none;
+      border-bottom: 1px solid #ccc;
+      margin-bottom: 1rem;
+      border-radius: 8px;
+      overflow: hidden;
+    }
     @media (max-width:600px) { 
       main { padding: 0.5rem; } 
       #printContainer, #map { padding: 0.8rem; } 
@@ -224,22 +239,24 @@
       <button onclick="calcularDistancia()">Calcular</button>
     </section>
     
-    <!-- Container de resultados - oculto até o cálculo ocorrer com sucesso -->
-    <div id="resultsContainer" class="loading">
-      <p id="resultado"></p>
-      <p id="tollInfo"></p>
-      <button class="imprimir-btn no-print" onclick="imprimirReciboPDF()">Imprimir PDF</button>
-      <div id="receipt">
-        <h2>Recibo de Viagem</h2>
-        <p id="pOrigem">Origem: </p>
-        <p id="pDestino">Destino: </p>
-        <p id="pKmRodado">Km Rodado: </p>
-        <p id="pPedagio">Valor do Pedágio: </p>
-        <p id="pValorKm">Valor do Km: </p>
-        <p id="pTotal">Total: </p>
+    <!-- Container de resultados – o card com o efeito gradiente -->
+    <div id="resultsContainer">
+      <div id="resultsCard" class="loading">
+        <p id="resultado"></p>
+        <p id="tollInfo"></p>
+        <button class="imprimir-btn no-print" onclick="imprimirReciboPDF()">Imprimir PDF</button>
+        <div id="receipt">
+          <h2>Recibo de Viagem</h2>
+          <p id="pOrigem">Origem: </p>
+          <p id="pDestino">Destino: </p>
+          <p id="pKmRodado">Km Rodado: </p>
+          <p id="pPedagio">Valor do Pedágio: </p>
+          <p id="pValorKm">Valor do Km: </p>
+          <p id="pTotal">Total: </p>
+        </div>
+        <div id="map"></div>
+        <div id="routeButtons"></div>
       </div>
-      <div id="map"></div>
-      <div id="routeButtons"></div>
     </div>
   </main>
   <footer class="no-print">
